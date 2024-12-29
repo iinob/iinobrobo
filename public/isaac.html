@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>the binding</title>
+    </head>
+  <body>
+  <div id="container"></div>
+  <script>
+    window.RufflePlayer = window.RufflePlayer || {};
+    window.addEventListener("load", (event) => {
+        const ruffle = window.RufflePlayer.newest();
+        const player = ruffle.createPlayer();
+        const container = document.getElementById("container");
+        container.appendChild(player);
+	player.style.width = "100vw"; 
+	player.style.height = "100vh";
+        player.ruffle().load("/wotl.swf");
+    });
+</script>
+<script src="https://unpkg.com/@ruffle-rs/ruffle@0.1.0-nightly.2024.11.26/ruffle.js"></script>
+</body>
+</html>

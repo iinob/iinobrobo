@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yohoho</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" id="icon">
+  <link rel="stylesheet" href="msg.css">
+</head>
+<body>
+  <h1 id="header">connecting...</h1>
+  
+  <form id="messageForm" autocomplete="off" spellcheck="false">
+    <input class="textInput" type="text" id="usernameInput" placeholder="username" maxlength="45" required>
+    <input class="textInput" type="text" id="messageInput" placeholder="message" spellcheck="false" maxlength="99999" required>
+    <input type="color" id="colorInput" placeholder="username color" required value="#ffffff">
+    <button id="sendButton" type="submit">⮕</button>
+  </form>
+  <div id="messageContainer"></div>
+  
+    <script>
+    
+    // 24f388f8b15880fbdf976044322706e87f1593c4395fa84809238d91663cfd0b
+    // the super secretive code for the command
+    
+console.log("starting js");
+
+const messageForm = document.getElementById('messageForm');
+const messageContainer = document.getElementById('messageContainer');
+const header = document.getElementById('header');
+const icon = document.getElementById('icon');
+const al = document.getElementById('siteAlert');
+var rejoining = false;
+var lastUser = "";
+var username = "";
+var hideServerMessages = true;
+var bigchungus = "NEVER";
+var preventQuickMessaging = true;
+var ws;
+
+
+function socketHandler() {
+  console.log("starting socket handler");
+  if (ws) {
+    ws.close(); 
+  }
+
+  function visHandler() {
+    icon.setAttribute('href', 'favicon.ico');
+  }  
+
+  function iconChange() {
+    if (document.hidden) {
+      icon.setAttribute('href', 'circle.png');
+    } else {
+      icon.setAttribute('href', 'favicon.ico');
+    }
+  }  
+
+  document.addEventListener('visibilitychange', visHandler);
+  ws = new WebSocket('https://127.0.0.1:1337/');
+ 
+  // make sure only one of these is on at a time
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (Array.isArray(data)) {
+        data.forEach((object) => {
+          displayMessage(object.username, object.message, object.color);
+        });
+        rejoining = false;
+        //console.log("rejoining false");
+      } else if (data.message) {
+        displayMessage(data.username, data.message, data.color);
+      } else {
+        console.error("Unknown message format:", data);
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
+  };
+
+  function getLastSegment(str) {
+    const lastSlashIndex = str.lastIndexOf('=');
+    return lastSlashIndex === -1 ? str : str.substring(lastSlashIndex + 1);
+  }
+
+  function displayMessage(name, text, color) {
+    if (name === undefined || text === undefined || color === undefined) { // sometimes system messages just don't work. instead of fixing it get rid of them instead
+     return; 
+    } else {
+     header.innerText = 'messages'; 
+    }
+    if ((text.includes("New client joined!") || text.includes("Client left!")) && hideServerMessages) {
+      return;
+    } else if (!rejoining){
+      iconChange();
+    }
+    if (rejoining) {
+     return; 
+    }
+    const messageElement = document.createElement('div');
+    const messageAuthor = document.createElement('span');
+    const messageContent = document.createElement('span');
+    messageElement.appendChild(messageAuthor);
+    messageElement.appendChild(messageContent);
+    messageAuthor.style.color = color;
+    messageAuthor.innerText = name;
+    
+    if (text.toLowerCase().includes('/img') || text.toLowerCase().includes('/gif')) {
+      messageContent.innerHTML = '<img width="315" src="' + text.split(' ')[1] + '">';
+      if (text.length <= 4) {
+        messageContent.innerHTML = '<img width="315" src="/undefined.jpeg">';
+      }
+    } else if ((text.toLowerCase().includes('/vid') || text.toLowerCase().includes('www.youtube.com/watch')) && color !== '#5865f3') {
+      if (!(text.toLowerCase().includes('/vid'))) {
+        displayMessage(name, text, '#5865f3');
+        text = text.replace(/^.*?(https[^ ]*)\s.*$/, '$1');
+       text = '/vid' + text; 
+      }
+      messageContent.innerHTML = '<iframe id="videoframe" width="420" height="315" src="https://youtube.com/embed/' + getLastSegment(text) + '" allow="fullscreen;"></iframe>';
+      if (text.length <= 4) {
+       messageContent.innerHTML = '<img width="315" src="/foolishManNamedEvan.jpg">'
+      }
+    } else if (text.toLowerCase().includes('/a')) {
+        if (text.length <= 3) {
+         text = "/a http://shutup.com/"; 
+        }
+        messageContent.innerHTML = '<a target="_blank" rel="noreferrer noopener" href="' + text.split(' ')[1] + '">  ' + text.split(' ')[1] + '</a>';
+        messageAuthor.style.marginRight = '1vw';
+        messageAuthor.innerText += `:`;
+      } else if (text.toLowerCase().includes('/clear')) {
+      messageContainer.innerHTML = '';
+    } else {
+      messageContent.innerText += `: ` + text;
+    }
+    
+    if (name !== lastUser) {
+      messageElement.style.marginBottom = '2vh';
+    }
+    
+    messageContainer.prepend(messageElement);
+    lastUser = name;
+  }
+
+  // Function to add event listener
+  function addMessageListener() {
+    messageForm.removeEventListener('submit', messageSubmitHandler); // Remove previous listener
+    messageForm.addEventListener('submit', messageSubmitHandler);
+  }
+
+  function messageSubmitHandler(event) {
+    event.preventDefault();
+    //console.log("button pressed");
+
+ let message = document.getElementById('messageInput').value;
+    if (username === "") {
+      username = document.getElementById('usernameInput').value;
+    } else if (username !== document.getElementById("usernameInput").value) {
+      let oldUsername = username;
+      username = document.getElementById('usernameInput').value;
+      message += " && " + oldUsername + " changed to " + username;
+    }
+    if (username.toLowerCase().includes('system') || username.toLowerCase().includes('discord')) {
+     username = "big identity theft boy"; 
+     document.getElementById('usernameInput').value = username;
+    }
+    if (username.toLowerCase().includes('@')) {
+     username = "big pinger boy"; 
+     document.getElementById('usernameInput').value = username;
+    }
+    let color = document.getElementById('colorInput').value;
+
+    if (message.toLowerCase().includes("/sjm")) {
+      hideServerMessages = !hideServerMessages;
+    } else if (message.toLowerCase().includes("/help")) {
+      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball", "#FFD700");
+    } else if (message === "" || message.includes('@')) {
+        return;
+    } else if (ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ username, message, color }));
+      if (preventQuickMessaging) {
+        document.getElementById('messageInput').value = '';
+      }
+      return;
+    } else {
+      message = "[ws starting]"
+    }
+    
+    if (preventQuickMessaging) {
+      document.getElementById('messageInput').value = '';
+    }
+    displayMessage(username, message, color);
+  }
+
+  addMessageListener(); // Add the listener when the socket is established
+
+  ws.onopen = () => {
+    console.log('websocket connection established');
+  };
+  
+  ws.onclose = () => {
+    header.innerText = 'disconnected...';
+    console.warn("websocket connection closed, attempting restart");
+    rejoining = true;
+    //console.log("rejoining true");
+    setTimeout(socketHandler, 1000); // this is supposed to limit connection retries, but it just goes crazy anyways
+  };
+  
+  ws.onerror = (event) => {
+    console.warn("websocket error received, attempting restart");
+    rejoining = true;
+    //console.log("rejoining true");
+    setTimeout(socketHandler, 1000);
+  };
+}
+
+socketHandler();
+    </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+body {
+  background-color: #4d4d4d; 
+  font-family: Helvetica, Arial, sans-serif;
+ }
+ 
+ a {
+  color: #05f5f5; 
+ }
+ 
+ #siteAlert {
+  color: #e3092a;
+ }
+ 
+ #messageContainer {
+  color: #f2f2f2; 
+ }
+ 
+ #header {
+   color: #f2f2f2; 
+ }
+ 
+ #colorInput {
+  background-color: #333333;
+  border-radius: 10px;
+ }
+ 
+ #sendButton {
+  background-color: #046bba; 
+  color: #ffffff;
+  border-radius: 25px;
+  border-style: solid;
+ }
+ 
+ span {
+  display: inline-block; 
+  flex-direction: column;
+ }
+ 
+ .textInput {
+   border-radius: 25px;
+   padding-left: 10px;
+   background-color: #333333;
+   color: #ffffff;
+   border-style: solid;
+ }
+ 
