@@ -187,12 +187,6 @@ client.on('messageCreate', (msg) => {
         }
     }
 
-    if (msg.content.includes('yohoholiciousnessocityonerousness') && isGoonery) {
-	    for (let i = 0; i < 69; i++) {
-		    msg.channel.send('HOHOHO');
-	    }
-	    msg.delete();
-    }
 
     if (msg.content.toLowerCase().includes('balls') && isGoonery) {
         msg.reply('hehe balls');
