@@ -353,7 +353,7 @@ app.get('/file', (req, res) => {
 });
 
 app.use((req, res) => {
-    res.status(404).sendFile(path.join(__dirname, 'public', '404.html')); // another file to tell users to go away
+    res.status(404).sendFile(path.join(__dirname, 'public', 'notfound.html')); // another file to tell users to go away
 });
 
 const PORT = process.env.PORT || 3000;
