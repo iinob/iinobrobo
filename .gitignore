@@ -1,0 +1,4 @@
+.env
+content/*
+node_modules/
+public/index.html

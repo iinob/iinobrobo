@@ -84,8 +84,8 @@ const adminCommands = [
 try {
 	console.log("registering slash commands");
 	await rest.put(Routes.applicationCommands(botID), { body: commands });
-	await rest.put(Routes.applicationGuildCommands(botID, serverID), { body: commands });
-	await rest.put(Routes.applicationGuildCommands(botID, cheeseID), { body: commands });
+	//await rest.put(Routes.applicationGuildCommands(botID, serverID), { body: commands }); // readd later probababably
+	//await rest.put(Routes.applicationGuildCommands(botID, cheeseID), { body: commands });
 	await rest.put(Routes.applicationGuildCommands(botID, adminServerID), { body: adminCommands });
 	console.log("done registering slash commands");
 } catch (error) {
