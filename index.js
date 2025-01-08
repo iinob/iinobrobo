@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const cron = require('node-cron');
 const wss = new WebSocket.Server({ server });
 const {Client, IntentsBitField} = require('discord.js');
-const { ActivityType } = require('discord.js')
+const { ActivityType } = require('discord.js');
 
 const discordKey = process.env.DISCORD_KEY; // ok fine I made a .env
 const channelID = process.env.CROSS_CHANNEL_CID;
@@ -24,7 +24,8 @@ const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes
 const feelings = ['https://media1.tenor.com/m/kkyVF17qvn8AAAAd/mario-super-mario.gif', 'https://tenor.com/view/that-monday-feeling-mario-luigi-gif-4870452924641132638', 'https://tenor.com/view/that-tuesday-feeling-mario-swag-dance-gif-159860540190894364', 'https://tenor.com/view/that-wednesday-feeling-mario-luigi-gif-17147220739757084890', 'https://tenor.com/view/that-thursday-feeling-mario-twerking-gif-1942858848498373928', 'https://tenor.com/view/that-friday-feeling-mario-luigi-gif-12023906803573680184', 'https://tenor.com/view/that-saturday-feeling-ellipsis-queen-of-strongest-hero-mario-gif-9250951604859110521'];
 const letters = { 'A': '🇦', 'B': '🇧', 'C': '🇨', 'D': '🇩', 'E': '🇪', 'F': '🇫', 'G': '🇬', 'H': '🇭', 'I': '🇮', 'J': '🇯', 'K': '🇰', 'L': '🇱', 'M': '🇲', 'N': '🇳', 'O': '🇴', 'P': '🇵', 'Q': '🇶', 'R': '🇷', 'S': '🇸', 'T': '🇹', 'U': '🇺', 'V': '🇻', 'W': '🇼', 'X': '🇽', 'Y': '🇾', 'Z': '🇿' };
 
-console.log('init started'); // don't need nginx warning anymore, it starts at boot now
+
+console.log('init started...'); // don't need nginx warning anymore, it starts at boot now
 
 function systemMessage(username, message, color, room) { // probably doesn't need to be a function but it is
         messages.push({ username, message, color, room });
@@ -44,7 +45,7 @@ const client = new Client({ // discord intents, discord requires perms to be set
         status: 'online',
         afk: false,
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
-            name: '2014 is only 3 months away!',
+            name: "At 2025 - Where the hoes at? Cocky want [object Object]!",
             type: ActivityType.Custom
 	    /* url: 'url'*/ // for streaming
         }],
@@ -270,6 +271,9 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
 
 client.login(discordKey);
 
+var pinging = false;
+var pingUsers = [];
+
 wss.on('connection', (ws, req) => {
 	users++;
 
@@ -284,6 +288,7 @@ wss.on('connection', (ws, req) => {
             ws.send(JSON.stringify(messages));
         });
     }
+    
 
     ws.on('message', (message) => {
         //console.log(`Received: ${message}`);
@@ -292,12 +297,33 @@ wss.on('connection', (ws, req) => {
 	        if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main") { // messages too long will break discord
 		        client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
 	        }
+		//console.log(parsedMessage.username + " : " + parsedMessage.message);
+		if (parsedMessage.message.includes('sysinq::reply')) {
+
+			pingUsers.push(parsedMessage.username);
+            
+			if (pingUsers.length == users) {
+				console.log("replies full");
+				systemMessage("SYSTEM", "active users: " + pingUsers.toString(), "#fc7b03", "all");
+				passMessage(JSON.stringify(messages[messages.length - 1]));
+				pinging = false;
+				pingUsers = [];
+			}
+
+			return;
+		}
 	        if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
 		        return;
 	        }
 	        if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
 		        messages = [];
 	        }
+		if (parsedMessage.message.includes('/names')) {
+			systemMessage("SYSTEM", "sysinq::wusyaname", "#fc7b03", "all"); // system inquiry, doesn't really mean anything but looks cool ig
+			passMessage(JSON.stringify(messages[messages.length - 1]));
+			pinging = true;
+			return; // remove this later please
+		}
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
             const jsonMessage = JSON.stringify(parsedMessage);

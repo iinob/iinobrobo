@@ -8,8 +8,10 @@
   <link rel="stylesheet" href="msg.css">
 </head>
 <body>
+<div id='topbar'>
   <h1 id="header">connecting...</h1>
-  
+  <img id="bannerimage" alt="cool kids gif I stole from cameron perry" src="https://i.ibb.co/wN17dBy/oh-yeah.gif"/>
+</div>
   <form id="messageForm" autocomplete="off" spellcheck="false">
     <input class="textInput" type="text" id="usernameInput" placeholder="username" maxlength="45" required>
     <input class="textInput" type="text" id="messageInput" placeholder="message" spellcheck="false" maxlength="99999" required>
@@ -25,6 +27,8 @@
     
 console.log("starting js");
 
+const serverIP = 'https://127.0.0.1:1337/';
+
 const messageForm = document.getElementById('messageForm');
 const messageContainer = document.getElementById('messageContainer');
 const header = document.getElementById('header');
@@ -37,6 +41,18 @@ var hideServerMessages = true;
 var bigchungus = "NEVER";
 var preventQuickMessaging = true;
 var ws;
+
+const url = location.protocol + '//' + location.host + location.pathname;
+const parameters = new URLSearchParams(window.location.search);
+var tempRoom;
+
+if (parameters.has('room')) {
+  tempRoom = parameters.get('room');
+} else {
+ tempRoom = 'main'; 
+}
+
+const room = tempRoom
 
 
 function socketHandler() {
@@ -58,7 +74,7 @@ function socketHandler() {
   }  
 
   document.addEventListener('visibilitychange', visHandler);
-  ws = new WebSocket('https://127.0.0.1:1337/');
+  ws = new WebSocket(serverIP);
  
   // make sure only one of these is on at a time
   
@@ -67,13 +83,13 @@ function socketHandler() {
       const data = JSON.parse(event.data);
       if (Array.isArray(data)) {
         data.forEach((object) => {
-          displayMessage(object.username, object.message, object.color);
+          displayMessage(object.username, object.message, object.color, object.room, true);
         });
         rejoining = false;
         //console.log("rejoining false");
       } else if (data.message) {
-        displayMessage(data.username, data.message, data.color);
-      } else {
+        displayMessage(data.username, data.message, data.color, data.room, false);
+      } else {f
         console.error("Unknown message format:", data);
       }
     } catch (error) {
@@ -86,13 +102,30 @@ function socketHandler() {
     return lastSlashIndex === -1 ? str : str.substring(lastSlashIndex + 1);
   }
 
-  function displayMessage(name, text, color) {
+  function displayMessage(name, text, color, channel, isInit) {
+    if (channel != "all" && room != channel) {
+      //console.log("not showing message because " + room + ":" + channel + ":" + (channel != room) + ":" + (channel != "all"));
+      return;
+    }
     if (name === undefined || text === undefined || color === undefined) { // sometimes system messages just don't work. instead of fixing it get rid of them instead
      return; 
     } else {
-     header.innerText = 'messages'; 
+      if (room == "main") {
+        header.innerText = 'messages';
+      } else {
+        header.innerText = 'messages::' + room; 
+      }
     }
-    if ((text.includes("New client joined!") || text.includes("Client left!")) && hideServerMessages) {
+    //console.log(name + ": " + text + ": " + color);
+    if (text.includes("sysinq::wusyaname") && !isInit) {
+      console.log("replying to sysinq");
+      let message = "sysinq::reply";
+      let username = document.getElementById('usernameInput').value;
+      let color = "#000000";
+      let room = "all";
+     ws.send(JSON.stringify({ username, message, color, room })); 
+    }
+    if ((text.includes("New client joined!") || text.includes("Client left!")  || text.includes("sysinq")) && hideServerMessages) {
       return;
     } else if (!rejoining){
       iconChange();
@@ -107,15 +140,18 @@ function socketHandler() {
     messageElement.appendChild(messageContent);
     messageAuthor.style.color = color;
     messageAuthor.innerText = name;
-    
     if (text.toLowerCase().includes('/img') || text.toLowerCase().includes('/gif')) {
-      messageContent.innerHTML = '<img width="315" src="' + text.split(' ')[1] + '">';
+      if (/[a-zA-Z]/.test(text.replace("/img", "").replace("/gif", ""))) {
+        messageContent.innerHTML = '<img width="315" src="' + text.split(' ')[1] + '">';
+      } else {
+       return; 
+      }
       if (text.length <= 4) {
         messageContent.innerHTML = '<img width="315" src="/undefined.jpeg">';
       }
     } else if ((text.toLowerCase().includes('/vid') || text.toLowerCase().includes('www.youtube.com/watch')) && color !== '#5865f3') {
       if (!(text.toLowerCase().includes('/vid'))) {
-        displayMessage(name, text, '#5865f3');
+        displayMessage(name, text, '#5865f3', room);
         text = text.replace(/^.*?(https[^ ]*)\s.*$/, '$1');
        text = '/vid' + text; 
       }
@@ -132,6 +168,7 @@ function socketHandler() {
         messageAuthor.innerText += `:`;
       } else if (text.toLowerCase().includes('/clear')) {
       messageContainer.innerHTML = '';
+      return;
     } else {
       messageContent.innerText += `: ` + text;
     }
@@ -139,7 +176,7 @@ function socketHandler() {
     if (name !== lastUser) {
       messageElement.style.marginBottom = '2vh';
     }
-    
+    //console.log(name + " : " + text + " : " + channel);
     messageContainer.prepend(messageElement);
     lastUser = name;
   }
@@ -160,38 +197,46 @@ function socketHandler() {
     } else if (username !== document.getElementById("usernameInput").value) {
       let oldUsername = username;
       username = document.getElementById('usernameInput').value;
-      message += " && " + oldUsername + " changed to " + username;
     }
     if (username.toLowerCase().includes('system') || username.toLowerCase().includes('discord')) {
      username = "big identity theft boy"; 
      document.getElementById('usernameInput').value = username;
     }
-    if (username.toLowerCase().includes('@')) {
+    if (username.toLowerCase().includes('@') || username.toLowerCase.includes(',')) { // commas in here too, mostly because I don't feel like making another thingie for it
      username = "big pinger boy"; 
      document.getElementById('usernameInput').value = username;
     }
+    
+    if (message.toLowerCase().includes("/switch")) {
+      if ((message.toLowerCase() === "/switch")) {
+        window.location.replace(url);
+      } else {  
+        window.location.replace(window.location.search.split('?')[0] + '?room=' + message.split(' ')[1]);
+      }
+    }
+    
     let color = document.getElementById('colorInput').value;
-
+    
     if (message.toLowerCase().includes("/sjm")) {
       hideServerMessages = !hideServerMessages;
     } else if (message.toLowerCase().includes("/help")) {
-      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball", "#FFD700");
+      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room);
     } else if (message === "" || message.includes('@')) {
         return;
     } else if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ username, message, color }));
+      ws.send(JSON.stringify({ username, message, color, room }));
       if (preventQuickMessaging) {
         document.getElementById('messageInput').value = '';
       }
       return;
     } else {
-      message = "[ws starting]"
+      message = "[ws starting]";
     }
     
     if (preventQuickMessaging) {
       document.getElementById('messageInput').value = '';
     }
-    displayMessage(username, message, color);
+    displayMessage(username, message, color, room);
   }
 
   addMessageListener(); // Add the listener when the socket is established
