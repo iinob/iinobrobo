@@ -303,27 +303,27 @@ wss.on('connection', (ws, req) => {
 			pingUsers.push(parsedMessage.username);
             
 			if (pingUsers.length == users) {
-				console.log("replies full");
-				systemMessage("SYSTEM", "active users: " + pingUsers.toString(), "#fc7b03", "all");
+				systemMessage("SYSTEM", `${users} active users: ${pingUsers.toString()}`, "#fc7b03", "all");
 				passMessage(JSON.stringify(messages[messages.length - 1]));
 				pinging = false;
 				pingUsers = [];
 			}
-
 			return;
 		}
+
 	        if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
 		        return;
 	        }
 	        if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
 		        messages = [];
 	        }
-		if (parsedMessage.message.includes('/names')) {
+
+		if (parsedMessage.message.includes('/here')) {
 			systemMessage("SYSTEM", "sysinq::wusyaname", "#fc7b03", "all"); // system inquiry, doesn't really mean anything but looks cool ig
 			passMessage(JSON.stringify(messages[messages.length - 1]));
 			pinging = true;
-			return; // remove this later please
 		}
+
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
             const jsonMessage = JSON.stringify(parsedMessage);
@@ -332,10 +332,7 @@ wss.on('connection', (ws, req) => {
                     client2.send(jsonMessage);
                 }
             });
-            if (parsedMessage.message.includes('/count')) { // using the users variable is probably a stupid solution but it works soo
-                systemMessage("SYSTEM", "There are currently " + users + " users online.", "#fc7b03", "all");
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-            }
+
 	        if (parsedMessage.message.includes('/8ball')) { // google (I think aven added this)
 		        systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
 		        passMessage(JSON.stringify(messages[messages.length - 1]));

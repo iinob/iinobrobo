@@ -202,7 +202,7 @@ function socketHandler() {
      username = "big identity theft boy"; 
      document.getElementById('usernameInput').value = username;
     }
-    if (username.toLowerCase().includes('@') || username.toLowerCase.includes(',')) { // commas in here too, mostly because I don't feel like making another thingie for it
+    if (username.toLowerCase().includes('@') || username.toLowerCase().includes(',')) { // commas in here too, mostly because I don't feel like making another thingie for it
      username = "big pinger boy"; 
      document.getElementById('usernameInput').value = username;
     }
@@ -220,7 +220,7 @@ function socketHandler() {
     if (message.toLowerCase().includes("/sjm")) {
       hideServerMessages = !hideServerMessages;
     } else if (message.toLowerCase().includes("/help")) {
-      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room);
+      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / here to show amount and names of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room);
     } else if (message === "" || message.includes('@')) {
         return;
     } else if (ws.readyState === WebSocket.OPEN) {
