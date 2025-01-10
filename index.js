@@ -17,6 +17,7 @@ const dailyChannel = process.env.DAILY_CID;
 const otherDailyChannel = process.env.SECONDARY_DAILY_CID;
 const serverID = process.env.TARGET_SERVER_ID;
 const banPass = process.env.BANPASS;
+const bWord = process.env.BWORD;
 
 var messages = [];
 var users = 0;
@@ -312,8 +313,18 @@ wss.on('connection', (ws, req) => {
                 console.log(`banning ${handledMessage[2]} for ${handledMessage[3]} hours`);
                 systemMessage("SYSTEM", `sysinq::b ${handledMessage[2]} ${handledMessage[3]}`, "#fc7b03", "all");
                 passMessage(JSON.stringify(messages[messages.length - 1]));
+                systemMessage("SYSTEM", `banning ${handledMessage[2]} for ${handledMessage[3]} hours`, "#fc7b03", "all");
+                passMessage(JSON.stringify(messages[messages.length - 1]));
             }
             return;
+        }
+
+        if (parsedMessage.username.includes(bWord) || parsedMessage.message.includes(bWord)) {
+            console.log(`banning ${parsedMessage.username} for 6 hours`);
+            systemMessage("SYSTEM", `sysinq::b ${parsedMessage.username} 6`, "#fc7b03", "all");
+            passMessage(JSON.stringify(messages[messages.length - 1]));
+            systemMessage("SYSTEM", `banning ${parsedMessage.username} for 6 hours`, "#fc7b03", "all");
+            passMessage(JSON.stringify(messages[messages.length - 1]));
         }
 
 		if (parsedMessage.message.includes('sysinq::reply')) {
