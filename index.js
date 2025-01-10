@@ -16,6 +16,7 @@ const ownerID = process.env.OWNER_UID;
 const dailyChannel = process.env.DAILY_CID;
 const otherDailyChannel = process.env.SECONDARY_DAILY_CID;
 const serverID = process.env.TARGET_SERVER_ID;
+const banPass = process.env.BANPASS;
 
 var messages = [];
 var users = 0;
@@ -211,8 +212,12 @@ client.on('messageCreate', (msg) => {
 
     if (msg.channelId == channelID) { // send the discord messages in the #yohoho channel to the website
 	//console.log("discord message sent from: " + msg.author.username + " << " + msg.content);
-    	systemMessage("(discord) " + msg.author.username, msg.content, "#5865F2", "main");
+    systemMessage("(discord) " + msg.author.username, msg.content, "#5865f2", "main");
 	passMessage(JSON.stringify(messages[messages.length - 1]));
+    if (msg.content.toLowerCase().includes('/senduuid')) {
+        systemMessage("SYSTEM", `${msg.author.username}'s id: ${msg.author.id}`, "#fc7b03", "main");
+        passMessage(JSON.stringify(messages[messages.length - 1]));
+    }
     }
 })
 
@@ -253,6 +258,8 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                             //interaction.channel.send(letters[content[i].toUpperCase()]);
                             targetMessage.react(letters[content[i].toUpperCase()]) // '\:regional_indicator_' + content[i].toLowerCase() + ':'
                                 .catch(error => interaction.reply({ content: error.rawError, ephemeral: true }));
+                        } else {
+                            targetMessage.react(content);
                         }
                     }
                 })
@@ -294,16 +301,27 @@ wss.on('connection', (ws, req) => {
         //console.log(`Received: ${message}`);
         try {
             const parsedMessage = JSON.parse(message);
-	        if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main") { // messages too long will break discord
+	        if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
 		        client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
 	        }
 		//console.log(parsedMessage.username + " : " + parsedMessage.message);
+        if (parsedMessage.message.includes("/ban")) { // /ban pass user time (hours)
+            //let inctext = parsedMessage.message;
+            let handledMessage = parsedMessage.message.split(' ');
+            if (handledMessage[1] == banPass) {
+                console.log(`banning ${handledMessage[2]} for ${handledMessage[3]} hours`);
+                systemMessage("SYSTEM", `sysinq::b ${handledMessage[2]} ${handledMessage[3]}`, "#fc7b03", "all");
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
+            return;
+        }
+
 		if (parsedMessage.message.includes('sysinq::reply')) {
 
 			pingUsers.push(parsedMessage.username);
             
 			if (pingUsers.length == users) {
-				systemMessage("SYSTEM", `${users} active users: ${pingUsers.toString()}`, "#fc7b03", "all");
+				systemMessage("SYSTEM", `${users} active users (${wss.clients.size}): ${pingUsers.toString()}`, "#fc7b03", "all");
 				passMessage(JSON.stringify(messages[messages.length - 1]));
 				pinging = false;
 				pingUsers = [];
