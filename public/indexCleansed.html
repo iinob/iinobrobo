@@ -28,7 +28,7 @@
     
 console.log("starting js");
 
-const serverIP = 'https://71.254.15.219:1337/';
+const serverIP = 'https://127.0.0.1:1337/';
 
 const messageForm = document.getElementById('messageForm');
 const messageContainer = document.getElementById('messageContainer');
@@ -208,7 +208,7 @@ function socketHandler() {
         messageAuthor.style.marginRight = '1vw';
         messageAuthor.innerText += `:`;
       } else if (text.toLowerCase().includes('/clear')) {
-      messageContainer.innerHTML = '<img https://media.tenor.com/onXSYrBPyJIAAAAM/waymalers.gif';
+      messageContainer.innerHTML = '<img https://media.tenor.com/onXSYrBPyJIAAAAM/waymalers.gif>';
       return;
     } else {
       messageContent.innerText += `: ` + text;
