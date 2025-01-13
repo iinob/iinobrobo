@@ -10,6 +10,13 @@ const wss = new WebSocket.Server({ server });
 const {Client, IntentsBitField} = require('discord.js');
 const { ActivityType } = require('discord.js');
 const crypto = require('crypto'); // let hash = crypto.createHash('md5').update('some_string').digest("hex");
+const fs = require('fs');
+const url = require('url');
+///const { json } = require('stream/consumers');
+const cors = require('cors');
+app.use(cors());
+app.use(express.json());
+const { v4: uuidv4 } = require('uuid');
 
 const discordKey = process.env.DISCORD_KEY; // ok fine I made a .env
 const channelID = process.env.CROSS_CHANNEL_CID;
@@ -18,6 +25,7 @@ const dailyChannel = process.env.DAILY_CID;
 const otherDailyChannel = process.env.SECONDARY_DAILY_CID;
 const serverID = process.env.TARGET_SERVER_ID;
 const banPass = process.env.BANPASS;
+const siteAuthKey = process.env.SITE_AUTHKEY;
 
 var messages = [];
 var users = 0;
@@ -29,16 +37,40 @@ const letters = { 'A': '🇦', 'B': '🇧', 'C': '🇨', 'D': '🇩', 'E': '🇪
 
 console.log('init started...'); // don't need nginx warning anymore, it starts at boot now
 
+function jsonRead() {
+    if (!fs.existsSync('userdata.json')) {
+        fs.writeFileSync("userdata.json");
+    }
+    return JSON.parse(fs.readFileSync("userdata.json"));
+}
+
+function jsonWrite(user) {
+        let users = jsonRead();
+        users.push(user);
+        fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+}
+
+function jsonTokenUpdate(userid, newtoken) {
+    let users = jsonRead();
+    let user = users.find(user => user.id === userid);
+    if (user) {
+        user.token = newtoken;
+        fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+    } else {
+        console.error(`failed to update token for user ${userid}`);
+    }
+}
+
 function systemMessage(username, message, color, room) { // probably doesn't need to be a function but it is
         messages.push({ username, message, color, room });
 }
 
-function passMessage(message) { // send the message out to active clients
+function passMessage(message) {
     wss.clients.forEach((client2) => {
         if (client2.readyState === WebSocket.OPEN) {
             client2.send(message);
         }
-        });
+    });
 }
 
 
@@ -280,27 +312,40 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
 client.login(discordKey);
 
 
-wss.on('connection', (ws, req) => { // handles connected users
+wss.on('connection', (socket, req) => { // handles connected users
     //users++; old system, not needed
+
+    const userData = jsonRead();
+    //console.log(req.url);
+    const token = new URLSearchParams(req.url.split('?')[1]).get('token');
+    //console.log(token);
+    const currentUser = userData.find(u => u.cookie === token);
+    
+    if (currentUser !== undefined) {
+        //console.log("found token");
+    } else {
+        socket.close();
+    }
 
     systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
     passMessage(JSON.stringify(messages[messages.length - 1]));
     // this is a necessary part of the website's functionality, even if the site hides join messages
 
-    if (ws.readyState === WebSocket.OPEN) { // send all messages if it's open, otherwise wait
-        ws.send(JSON.stringify(messages));
+    if (socket.readyState === WebSocket.OPEN) { // send all messages if it's open, otherwise wait
+        socket.send(JSON.stringify(messages));
     } else {
-        ws.on('open', () => { // I have no idea if this is even possible to reach
-            ws.send(JSON.stringify(messages));
+        socket.on('open', () => { // I have no idea if this is even possible to reach
+            socket.send(JSON.stringify(messages));
         });
     }
     
 
-    ws.on('message', (message) => {
+    socket.on('message', (message) => {
         try {
             const parsedMessage = JSON.parse(message);
+
             if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
-                client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
+                //client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
             }
 
             if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
@@ -330,7 +375,7 @@ wss.on('connection', (ws, req) => { // handles connected users
     }
     });
 
-    ws.on('close', () => { // runs when client leaves
+    socket.on('close', () => { // runs when client leaves
     //users--;
     });
 });
@@ -339,8 +384,48 @@ wss.on('connection', (ws, req) => { // handles connected users
 
 app.use(express.static('public'));
 
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html')); // file to tell users to go away
+});
+
+app.post('/login', (req, res) =>  {
+    const tempToken = Math.random().toString(36).slice(2);
+    const users = jsonRead();
+    let { name, pass, key } = req.body;
+    if (key != siteAuthKey) {
+        return;
+    }
+    if (name == "" || pass == "") {
+        return;
+    }
+    let user = users.find(user => user.name === name);
+    if (user) {
+        if (user.pass == crypto.createHash('md5').update(pass).digest("hex")) {
+            console.log('login successful');
+        } else {
+            console.log(`login failed for: ${name}`);
+        }
+    } else {
+                let tempID = uuidv4();
+                let userIDHolder = users.find(user => user.id === tempID);
+                while(userIDHolder) {
+                    tempID = uuidv4();
+                    userIDHolder = users.find(user => user.id === tempID);
+                }
+
+                let userObj = {
+                    "name": name,
+                    "id": tempID,
+                    "pass": crypto.createHash('md5').update(pass).digest("hex"),
+                    "cookie": tempToken
+                }
+                jsonWrite(userObj);
+                return;
+            
+        }
+    
+    res.send(JSON.stringify(messages));
 });
 
 app.get('/isaac', (req, res) => {
@@ -355,6 +440,13 @@ app.get('/wotl.swf', (req, res) => {
 app.get('/file', (req, res) => {
     res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
 });
+*/
+/*
+server.on('upgrade', (req, socket, head) => {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
 */
 
 app.use((req, res) => {
