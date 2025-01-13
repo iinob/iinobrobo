@@ -9,6 +9,7 @@ const cron = require('node-cron');
 const wss = new WebSocket.Server({ server });
 const {Client, IntentsBitField} = require('discord.js');
 const { ActivityType } = require('discord.js');
+const crypto = require('crypto'); // let hash = crypto.createHash('md5').update('some_string').digest("hex");
 
 const discordKey = process.env.DISCORD_KEY; // ok fine I made a .env
 const channelID = process.env.CROSS_CHANNEL_CID;
@@ -33,9 +34,9 @@ function systemMessage(username, message, color, room) { // probably doesn't nee
 }
 
 function passMessage(message) { // send the message out to active clients
-	wss.clients.forEach((client2) => {
+    wss.clients.forEach((client2) => {
         if (client2.readyState === WebSocket.OPEN) {
-        	client2.send(message);
+            client2.send(message);
         }
         });
 }
@@ -48,9 +49,9 @@ const client = new Client({ // discord intents, discord requires perms to be set
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
             name: "At 2025 - Where the hoes at? Cocky want [object Object]!",
             type: ActivityType.Custom
-	    /* url: 'url'*/ // for streaming
+        /* url: 'url'*/ // for streaming
         }],
-	},
+    },
     intents: [
         IntentsBitField.Flags.Guilds,
         IntentsBitField.Flags.GuildMembers,
@@ -69,9 +70,9 @@ client.on('ready', (c) => {
 })
 
 cron.schedule('0 6 * * *', () => { // send the daily feeling every day at 6
-	let today = new Date();
-	client.channels.cache.get(dailyChannel).send(feelings[today.getDay()]);
-	client.channels.cache.get(otherDailyChannel).send(feelings[today.getDay()]);
+    let today = new Date();
+    client.channels.cache.get(dailyChannel).send(feelings[today.getDay()]);
+    client.channels.cache.get(otherDailyChannel).send(feelings[today.getDay()]);
 });
 
 var rouletteChannel;
@@ -195,11 +196,11 @@ client.on('messageCreate', (msg) => {
     }
 
     if (msg.content.toLowerCase().includes('uwu') || msg.content.toLowerCase().includes('owo')) {
-    	msg.react('🤓');
+        msg.react('🤓');
     }
 
     if (msg.content.toLowerCase().includes('foolish') && isGoonery) {
-	 msg.reply({ files: ["./content/foolish.mp4"] });
+     msg.reply({ files: ["./content/foolish.mp4"] });
     }
 
     if (msg.content.toLowerCase().includes('gyu')) {
@@ -207,13 +208,13 @@ client.on('messageCreate', (msg) => {
     }
 
     if (msg.content.toLowerCase().includes('pickle') && isGoonery) {
-	    msg.reply({ files: ["./content/pickle.mp4"] });
+        msg.reply({ files: ["./content/pickle.mp4"] });
     }
 
     if (msg.channelId == channelID) { // send the discord messages in the #yohoho channel to the website
-	//console.log("discord message sent from: " + msg.author.username + " << " + msg.content);
+    //console.log("discord message sent from: " + msg.author.username + " << " + msg.content);
     systemMessage("(discord) " + msg.author.username, msg.content, "#5865f2", "main");
-	passMessage(JSON.stringify(messages[messages.length - 1]));
+    passMessage(JSON.stringify(messages[messages.length - 1]));
     if (msg.content.toLowerCase().includes('/senduuid')) {
         systemMessage("SYSTEM", `${msg.author.username}'s id: ${msg.author.id}`, "#fc7b03", "main");
         passMessage(JSON.stringify(messages[messages.length - 1]));
@@ -222,33 +223,33 @@ client.on('messageCreate', (msg) => {
 })
 
 client.on('interactionCreate', (interaction) => { // it's this many days until this national holiday
-	if (interaction.isChatInputCommand()) {
-		switch (interaction.commandName) {
-			case 'pimps':
-				interaction.reply("they need to go back to zimbabwe");
-				break;
-			case '8ball':
-				interaction.reply(outcomes[randomInt(0, outcomes.length - 1)]);
-				break;
-			case 'thatfeeling':
-				let today = new Date(); // idk why the date function's like this either, redeclare locally so it can change daily
-	            		interaction.reply(feelings[today.getDay()]);
-				break;
-			case 'roulettestart':
-		                if (!rouletteEnabled) {
-                		rouletteGame(interaction.channel.id);
-                		//interaction.reply({ content: "roulette started successfully", ephemeral: true });
-                		interaction.reply("roulette starting in current channel");
-                		}
-                		break;
-            		case 'rouletteend':
-                		rouletteEnd();
-                		break;
-			case 'pickup':
-				interaction.reply("you wanna rungle in my cungle I'll take you out");
-				break;
-			case 'reactword':
-				interaction.reply({ content: "reacting", ephemeral: true });
+    if (interaction.isChatInputCommand()) {
+        switch (interaction.commandName) {
+            case 'pimps':
+                interaction.reply("they need to go back to zimbabwe");
+                break;
+            case '8ball':
+                interaction.reply(outcomes[randomInt(0, outcomes.length - 1)]);
+                break;
+            case 'thatfeeling':
+                let today = new Date(); // idk why the date function's like this either, redeclare locally so it can change daily
+                        interaction.reply(feelings[today.getDay()]);
+                break;
+            case 'roulettestart':
+                        if (!rouletteEnabled) {
+                        rouletteGame(interaction.channel.id);
+                        //interaction.reply({ content: "roulette started successfully", ephemeral: true });
+                        interaction.reply("roulette starting in current channel");
+                        }
+                        break;
+                    case 'rouletteend':
+                        rouletteEnd();
+                        break;
+            case 'pickup':
+                interaction.reply("you wanna rungle in my cungle I'll take you out");
+                break;
+            case 'reactword':
+                interaction.reply({ content: "reacting", ephemeral: true });
                 let reactwordID = interaction.options.get('messageid').value;
                 interaction.channel.messages.fetch(reactwordID)
                 .then(targetMessage => {
@@ -266,27 +267,25 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                 .catch(error => {
                     console.error('Error fetching message:', error); 
                 });
-				break;
+                break;
             case 'messagesend':
                 let targetChannel = interaction.client.channels.cache.get(interaction.options.get('channelid').value);
                 let targetMessage = interaction.options.get('messagecontent').value;
                 targetChannel.send(targetMessage);
                 interaction.reply({ content: "message successful", ephemeral: true });
-			} // the end of the switch statement, not the end of the case
-	}
+            } // the end of the switch statement, not the end of the case
+    }
 });
 
 client.login(discordKey);
 
-var pinging = false;
-var pingUsers = [];
 
-wss.on('connection', (ws, req) => {
-	users++;
+wss.on('connection', (ws, req) => { // handles connected users
+    //users++; old system, not needed
 
-	systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
-	passMessage(JSON.stringify(messages[messages.length - 1]));
-	// this is a necessary part of the website's functionality, even if the site hides join messages
+    systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
+    passMessage(JSON.stringify(messages[messages.length - 1]));
+    // this is a necessary part of the website's functionality, even if the site hides join messages
 
     if (ws.readyState === WebSocket.OPEN) { // send all messages if it's open, otherwise wait
         ws.send(JSON.stringify(messages));
@@ -298,52 +297,20 @@ wss.on('connection', (ws, req) => {
     
 
     ws.on('message', (message) => {
-        //console.log(`Received: ${message}`);
         try {
             const parsedMessage = JSON.parse(message);
-	        if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
-		        client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
-	        }
-		//console.log(parsedMessage.username + " : " + parsedMessage.message);
-        if (parsedMessage.message.includes("/ban")) { // /ban pass user time (hours)
-            //let inctext = parsedMessage.message;
-            let handledMessage = parsedMessage.message.split(' ');
-            if (handledMessage[1] == banPass) {
-                console.log(`banning ${handledMessage[2]} for ${handledMessage[3]} hours`);
-                systemMessage("SYSTEM", `sysinq::b ${handledMessage[2]} ${handledMessage[3]}`, "#fc7b03", "all");
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-                systemMessage("SYSTEM", `banning ${handledMessage[2]} for ${handledMessage[3]} hours`, "#fc7b03", "all");
-                passMessage(JSON.stringify(messages[messages.length - 1]));
+            if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
+                client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
             }
-            return;
-        }
 
-
-		if (parsedMessage.message.includes('sysinq::reply')) {
-
-			pingUsers.push(parsedMessage.username);
+            if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
+                return;
+            }
             
-			if (pingUsers.length == users) {
-				systemMessage("SYSTEM", `${users} active users (${wss.clients.size}): ${pingUsers.toString()}`, "#fc7b03", "all");
-				passMessage(JSON.stringify(messages[messages.length - 1]));
-				pinging = false;
-				pingUsers = [];
-			}
-			return;
-		}
+            if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
+                messages = [];
+            }
 
-	        if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
-		        return;
-	        }
-	        if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
-		        messages = [];
-	        }
-
-		if (parsedMessage.message.includes('/here')) {
-			systemMessage("SYSTEM", "sysinq::wusyaname", "#fc7b03", "all"); // system inquiry, doesn't really mean anything but looks cool ig
-			passMessage(JSON.stringify(messages[messages.length - 1]));
-			pinging = true;
-		}
 
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
@@ -354,22 +321,21 @@ wss.on('connection', (ws, req) => {
                 }
             });
 
-	        if (parsedMessage.message.includes('/8ball')) { // google (I think aven added this)
-		        systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
-		        passMessage(JSON.stringify(messages[messages.length - 1]));
-	        }
-        } catch (error) {
-            console.error("Invalid message: " + message); // normally when this happens the error is something else entirely
+            if (parsedMessage.message.includes('/8ball')) { // google (I think aven added this)
+                systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
+        } catch (error) { // don't shut down when a brocken message is sent
             console.error("Error: " + error); // so there's this
-	}
+    }
     });
 
-    ws.on('close', () => {
-        //systemMessage("SYSTEM", "Client left!", "#fc7b03"); // for some reason there are a lot of join messages
-//	console.log('Client disconnected');
-	users--;
+    ws.on('close', () => { // runs when client leaves
+    //users--;
     });
 });
+
+// pretty much everything before here is boilerplate, necessary but not too important
 
 app.use(express.static('public'));
 
@@ -378,17 +344,18 @@ app.get('/', (req, res) => {
 });
 
 app.get('/isaac', (req, res) => {
-	res.sendFile(path.join(__dirname, 'public', 'isaac.html'));
+    res.sendFile(path.join(__dirname, 'public', 'isaac.html'));
 });
 
 app.get('/wotl.swf', (req, res) => {
-	res.sendFile(path.join(__dirname, 'content', 'wotl.swf'));
+    res.sendFile(path.join(__dirname, 'content', 'wotl.swf'));
 });
 
+/*
 app.get('/file', (req, res) => {
-	res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
-	//console.log("file accessed from " + req.headers['x-forwarded-for']); //very secretive
+    res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
 });
+*/
 
 app.use((req, res) => {
     res.status(404).sendFile(path.join(__dirname, 'public', 'notfound.html')); // another file to tell users to go away
