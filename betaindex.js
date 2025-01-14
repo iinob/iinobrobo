@@ -25,7 +25,7 @@ const dailyChannel = process.env.DAILY_CID;
 const otherDailyChannel = process.env.SECONDARY_DAILY_CID;
 const serverID = process.env.TARGET_SERVER_ID;
 const banPass = process.env.BANPASS;
-const siteAuthKey = process.env.SITE_AUTHKEY;
+
 
 var messages = [];
 var users = 0;
@@ -34,6 +34,7 @@ const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes
 const feelings = ['https://media1.tenor.com/m/kkyVF17qvn8AAAAd/mario-super-mario.gif', 'https://tenor.com/view/that-monday-feeling-mario-luigi-gif-4870452924641132638', 'https://tenor.com/view/that-tuesday-feeling-mario-swag-dance-gif-159860540190894364', 'https://tenor.com/view/that-wednesday-feeling-mario-luigi-gif-17147220739757084890', 'https://tenor.com/view/that-thursday-feeling-mario-twerking-gif-1942858848498373928', 'https://tenor.com/view/that-friday-feeling-mario-luigi-gif-12023906803573680184', 'https://tenor.com/view/that-saturday-feeling-ellipsis-queen-of-strongest-hero-mario-gif-9250951604859110521'];
 const letters = { 'A': '🇦', 'B': '🇧', 'C': '🇨', 'D': '🇩', 'E': '🇪', 'F': '🇫', 'G': '🇬', 'H': '🇭', 'I': '🇮', 'J': '🇯', 'K': '🇰', 'L': '🇱', 'M': '🇲', 'N': '🇳', 'O': '🇴', 'P': '🇵', 'Q': '🇶', 'R': '🇷', 'S': '🇸', 'T': '🇹', 'U': '🇺', 'V': '🇻', 'W': '🇼', 'X': '🇽', 'Y': '🇾', 'Z': '🇿' };
 
+var keys = [];
 
 console.log('init started...'); // don't need nginx warning anymore, it starts at boot now
 
@@ -42,6 +43,10 @@ function jsonRead() {
         fs.writeFileSync("userdata.json");
     }
     return JSON.parse(fs.readFileSync("userdata.json"));
+}
+
+function randomString() {
+    return Math.random().toString(36).slice(2);
 }
 
 function jsonWrite(user) {
@@ -390,10 +395,10 @@ app.get('/', (req, res) => {
 });
 
 app.post('/login', (req, res) =>  {
-    const tempToken = Math.random().toString(36).slice(2);
+    const tempToken = randomString();
     const users = jsonRead();
     let { name, pass, key } = req.body;
-    if (key != siteAuthKey) {
+    if (key !== siteAuthKey) {
         return;
     }
     if (name == "" || pass == "") {
@@ -402,11 +407,19 @@ app.post('/login', (req, res) =>  {
     let user = users.find(user => user.name === name);
     if (user) {
         if (user.pass == crypto.createHash('md5').update(pass).digest("hex")) {
-            console.log('login successful');
+            console.log(`login successful for ${user.name} : ${user.id}`);
+            let userObj = {
+                "name": user.name,
+                "id": user.id,
+                "cookie": tempToken
+            }
+            jsonTokenUpdate(user.id, tempToken);
+            res.send(JSON.stringify(userObj));
         } else {
             console.log(`login failed for: ${name}`);
         }
     } else {
+                console.log("making new account");
                 let tempID = uuidv4();
                 let userIDHolder = users.find(user => user.id === tempID);
                 while(userIDHolder) {
@@ -421,11 +434,12 @@ app.post('/login', (req, res) =>  {
                     "cookie": tempToken
                 }
                 jsonWrite(userObj);
+                res.send(JSON.stringify({"name": name, "id": tempID, "cookie": tempToken}));
+                console.log("done making new account");
                 return;
             
         }
     
-    res.send(JSON.stringify(messages));
 });
 
 app.get('/isaac', (req, res) => {
