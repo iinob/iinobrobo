@@ -1,3 +1,5 @@
+// TODO: automate discord authentication
+
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
@@ -59,7 +61,7 @@ function jsonTokenUpdate(userid, newtoken) {
     let users = jsonRead();
     let user = users.find(user => user.id === userid);
     if (user) {
-        user.token = newtoken;
+        user.cookie = newtoken;
         fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
     } else {
         console.error(`failed to update token for user ${userid}`);
@@ -310,6 +312,11 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                 let targetMessage = interaction.options.get('messagecontent').value;
                 targetChannel.send(targetMessage);
                 interaction.reply({ content: "message successful", ephemeral: true });
+                break;
+            case 'keygen':
+                let key = randomString();
+                keys.push(key);
+                interaction.reply({ content: `your key: ${key}`, ephemeral: true });
             } // the end of the switch statement, not the end of the case
     }
 });
@@ -320,14 +327,10 @@ client.login(discordKey);
 wss.on('connection', (socket, req) => { // handles connected users
     //users++; old system, not needed
 
-    const userData = jsonRead();
-    //console.log(req.url);
-    const token = new URLSearchParams(req.url.split('?')[1]).get('token');
-    //console.log(token);
-    const currentUser = userData.find(u => u.cookie === token);
-    
+    let userData = jsonRead();
+    let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+    let currentUser = userData.find(u => u.cookie === token);
     if (currentUser !== undefined) {
-        //console.log("found token");
     } else {
         socket.close();
     }
@@ -346,6 +349,13 @@ wss.on('connection', (socket, req) => { // handles connected users
     
 
     socket.on('message', (message) => {
+        let userData = jsonRead();
+        let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+        let currentUser = userData.find(u => u.cookie === token);
+        if (currentUser !== undefined) {
+        } else {
+            socket.close();
+        }
         try {
             const parsedMessage = JSON.parse(message);
 
@@ -356,12 +366,25 @@ wss.on('connection', (socket, req) => { // handles connected users
             if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
                 return;
             }
+
             
             if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
                 messages = [];
             }
 
+            if (parsedMessage.message.includes('/here')) {
+                systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online`, "#fc7b03", parsedMessage.room);
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
 
+            if (parsedMessage.message.includes('whois')) {
+                let users = jsonRead();
+                let user = users.find(user => user.name === parsedMessage.message.str.slice(parsedMessage.message.indexOf(' ') + 1));
+                systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
+            
+            parsedMessage.username = currentUser.name;
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
             const jsonMessage = JSON.stringify(parsedMessage);
@@ -397,14 +420,21 @@ app.get('/', (req, res) => {
 app.post('/login', (req, res) =>  {
     const tempToken = randomString();
     const users = jsonRead();
-    let { name, pass, key } = req.body;
-    if (key !== siteAuthKey) {
+    let { name, pass, key, dc } = req.body;
+    if (!keys.includes(key)) {
         return;
+    } else {
+        if (keys.indexOf(key) > -1) {
+            keys.splice(keys.indexOf(key), 1);
+          }
     }
     if (name == "" || pass == "") {
         return;
     }
-    let user = users.find(user => user.name === name);
+    if (name.includes("@")) {
+        return;
+    }
+    let user = users.find(user => user.name.toLowerCase() === name.toLowerCase());
     if (user) {
         if (user.pass == crypto.createHash('md5').update(pass).digest("hex")) {
             console.log(`login successful for ${user.name} : ${user.id}`);
@@ -419,7 +449,7 @@ app.post('/login', (req, res) =>  {
             console.log(`login failed for: ${name}`);
         }
     } else {
-                console.log("making new account");
+                console.log(`making new account for ${name}`);
                 let tempID = uuidv4();
                 let userIDHolder = users.find(user => user.id === tempID);
                 while(userIDHolder) {
@@ -431,11 +461,11 @@ app.post('/login', (req, res) =>  {
                     "name": name,
                     "id": tempID,
                     "pass": crypto.createHash('md5').update(pass).digest("hex"),
-                    "cookie": tempToken
+                    "cookie": tempToken,
+                    "dc": dc
                 }
                 jsonWrite(userObj);
                 res.send(JSON.stringify({"name": name, "id": tempID, "cookie": tempToken}));
-                console.log("done making new account");
                 return;
             
         }

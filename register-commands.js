@@ -40,6 +40,10 @@ const commands = [
 		"contexts": [0,1,2]
 	},
 	{
+		name: 'keygen',
+		description: 'make a key for the messaging site'
+	},
+	{
 		name: 'reactword',
 		description: 'reacts with a word',
 		options: [
