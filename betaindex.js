@@ -86,7 +86,7 @@ const client = new Client({ // discord intents, discord requires perms to be set
         status: 'online',
         afk: false,
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
-            name: "At 2025 - Where the hoes at? Cocky want [object Object]!",
+            name: "fuck that, golf wang",
             type: ActivityType.Custom
         /* url: 'url'*/ // for streaming
         }],
@@ -331,10 +331,12 @@ wss.on('connection', (socket, req) => { // handles connected users
     let token = new URLSearchParams(req.url.split('?')[1]).get('token');
     let currentUser = userData.find(u => u.cookie === token);
     if (currentUser !== undefined) {
+	    if (currentUser.banned == "true") {
+		    socket.close(1008, "banned indefinitely");
+	    }
     } else {
-        socket.close();
+        socket.close(1008, "not authenticated");
     }
-
     systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
     passMessage(JSON.stringify(messages[messages.length - 1]));
     // this is a necessary part of the website's functionality, even if the site hides join messages
@@ -360,7 +362,7 @@ wss.on('connection', (socket, req) => { // handles connected users
             const parsedMessage = JSON.parse(message);
 
             if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
-                //client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
+                client.channels.cache.get(channelID).send(currentUser.name + ': ' + parsedMessage.message); // send messages from the website to discord
             }
 
             if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
@@ -372,18 +374,6 @@ wss.on('connection', (socket, req) => { // handles connected users
                 messages = [];
             }
 
-            if (parsedMessage.message.includes('/here')) {
-                systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online`, "#fc7b03", parsedMessage.room);
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-            }
-
-            if (parsedMessage.message.includes('whois')) {
-                let users = jsonRead();
-                let user = users.find(user => user.name === parsedMessage.message.str.slice(parsedMessage.message.indexOf(' ') + 1));
-                systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-            }
-            
             parsedMessage.username = currentUser.name;
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
@@ -393,6 +383,29 @@ wss.on('connection', (socket, req) => { // handles connected users
                     client2.send(jsonMessage);
                 }
             });
+
+            if (parsedMessage.message.includes('/here')) {
+                systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online`, "#fc7b03", parsedMessage.room);
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
+
+            if (parsedMessage.message.includes('/whois')) {
+                let users = jsonRead();
+                let user = users.find(user => user.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                if (user) {
+                    systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
+                    passMessage(JSON.stringify(messages[messages.length - 1]));
+                } else {
+                    systemMessage("SYSTEM", `could not find user ${user.name}`, "#fc7b03", parsedMessage.room);
+                    passMessage(JSON.stringify(messages[messages.length - 1]))
+                }
+            }
+		    if (parsedMessage.message.includes('/keygen')) {
+			    let key = randomString();
+			    keys.push(key);
+			    systemMessage("SYSTEM", `your key is ${key}`, "#fc7b03", "all");
+			    passMessage(JSON.stringify(messages[messages.length - 1]));
+		    }
 
             if (parsedMessage.message.includes('/8ball')) { // google (I think aven added this)
                 systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
@@ -462,7 +475,8 @@ app.post('/login', (req, res) =>  {
                     "id": tempID,
                     "pass": crypto.createHash('md5').update(pass).digest("hex"),
                     "cookie": tempToken,
-                    "dc": dc
+                    "dc": dc,
+                    "banned": "false"
                 }
                 jsonWrite(userObj);
                 res.send(JSON.stringify({"name": name, "id": tempID, "cookie": tempToken}));
