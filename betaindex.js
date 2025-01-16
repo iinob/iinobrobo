@@ -68,6 +68,7 @@ function jsonTokenUpdate(userid, newtoken) {
     }
 }
 
+
 function systemMessage(username, message, color, room) { // probably doesn't need to be a function but it is
         messages.push({ username, message, color, room });
 }
@@ -384,6 +385,23 @@ wss.on('connection', (socket, req) => { // handles connected users
                 }
             });
 
+            if (parsedMessage.message.includes('/ban') && currentUser.admin == "true") {
+                let users = jsonRead();
+                let target = users.find(target => target.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                if (target.admin != "true") {
+                    target.banned = "true";
+                    fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+                }
+            }
+            if (parsedMessage.message.includes('/unban') && currentUser.admin == "true") {
+                let users = jsonRead();
+                let target = users.find(target => target.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                if (target.admin != "true") {
+                    target.banned = "false";
+                    fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+                }
+            }
+
             if (parsedMessage.message.includes('/here')) {
                 systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online`, "#fc7b03", parsedMessage.room);
                 passMessage(JSON.stringify(messages[messages.length - 1]));
@@ -391,7 +409,7 @@ wss.on('connection', (socket, req) => { // handles connected users
 
             if (parsedMessage.message.includes('/whois')) {
                 let users = jsonRead();
-                let user = users.find(user => user.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                let user = users.find(user => user.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
                 if (user) {
                     systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
                     passMessage(JSON.stringify(messages[messages.length - 1]));
