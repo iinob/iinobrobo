@@ -387,7 +387,7 @@ wss.on('connection', (socket, req) => { // handles connected users
 
             if (parsedMessage.message.includes('/ban') && currentUser.admin == "true") {
                 let users = jsonRead();
-                let target = users.find(target => target.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                let target = users.find(target => target.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
                 if (target.admin != "true") {
                     target.banned = "true";
                     fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
@@ -395,7 +395,7 @@ wss.on('connection', (socket, req) => { // handles connected users
             }
             if (parsedMessage.message.includes('/unban') && currentUser.admin == "true") {
                 let users = jsonRead();
-                let target = users.find(target => target.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                let target = users.find(target => target.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
                 if (target.admin != "true") {
                     target.banned = "false";
                     fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
@@ -409,12 +409,12 @@ wss.on('connection', (socket, req) => { // handles connected users
 
             if (parsedMessage.message.includes('/whois')) {
                 let users = jsonRead();
-                let user = users.find(user => user.name.toLowerCase() === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1));
+                let user = users.find(user => user.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
                 if (user) {
                     systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
                     passMessage(JSON.stringify(messages[messages.length - 1]));
                 } else {
-                    systemMessage("SYSTEM", `could not find user ${user.name}`, "#fc7b03", parsedMessage.room);
+                    systemMessage("SYSTEM", "could not find user", "#fc7b03", parsedMessage.room);
                     passMessage(JSON.stringify(messages[messages.length - 1]))
                 }
             }
