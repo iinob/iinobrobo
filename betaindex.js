@@ -316,7 +316,9 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                 break;
             case 'keygen':
                 let key = randomString();
-                keys.push(key);
+                if (keys.push(key) >= 5) {
+                    keys.shift();
+                }
                 interaction.reply({ content: `your key: ${key}`, ephemeral: true });
             } // the end of the switch statement, not the end of the case
     }
@@ -420,7 +422,9 @@ wss.on('connection', (socket, req) => { // handles connected users
             }
 		    if (parsedMessage.message.includes('/keygen')) {
 			    let key = randomString();
-			    keys.push(key);
+                if (keys.push(key) >= 5) {
+                    keys.shift();
+                }
 			    systemMessage("SYSTEM", `your key is ${key}`, "#fc7b03", "all");
 			    passMessage(JSON.stringify(messages[messages.length - 1]));
 		    }
@@ -494,6 +498,7 @@ app.post('/login', (req, res) =>  {
                     "pass": crypto.createHash('md5').update(pass).digest("hex"),
                     "cookie": tempToken,
                     "dc": dc,
+                    "admin": "false",
                     "banned": "false"
                 }
                 jsonWrite(userObj);
