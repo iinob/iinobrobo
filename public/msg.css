@@ -17,12 +17,13 @@ a {
 	color: #05f5f5;
 }
 
-#siteAlert {
+#siteAlert { /* troyal clicked here */
 	color: #e3092a;
 }
 
 #messageContainer {
 	color: #f2f2f2;
+	width: 50vw;
 }
 
 #header {
@@ -53,10 +54,6 @@ span {
 	background-color: #333333;
 	color: #ffffff;
 	border-style: solid;
-}
-
-#messageContainer {
-	width: 50vw;
 }
 
 #bannerimage {

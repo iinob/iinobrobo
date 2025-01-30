@@ -14,13 +14,13 @@
   <img id="bannerimage" alt="cool kids gif I stole from cameron perry" src="https://i.ibb.co/wN17dBy/oh-yeah.gif"/>
 </div>
   <form id="messageForm" autocomplete="off" spellcheck="false">
-    <input class="textInput" type="text" id="usernameInput" placeholder="username" maxlength="45" required>
     <input class="textInput" type="text" id="messageInput" placeholder="message" spellcheck="false" maxlength="99999" required>
     <input type="color" id="colorInput" placeholder="username color" required value="#ffffff">
     <button id="sendButton" type="submit">⮕</button>
   </form>
   <div id="messageContainer"></div>
-  
+
+
     <script>
     
     // 24f388f8b15880fbdf976044322706e87f1593c4395fa84809238d91663cfd0b
@@ -35,19 +35,23 @@ const messageContainer = document.getElementById('messageContainer');
 const header = document.getElementById('header');
 const icon = document.getElementById('icon');
 const al = document.getElementById('siteAlert');
-var rejoining = false;
-var lastUser = "";
-var username = "";
-var hideServerMessages = true;
+
+var rejoining = false; // set to true when disconnected and false when connected. 
+var hideServerMessages = true; // hides non-important messages from the server
 var bigchungus = "NEVER";
-var preventQuickMessaging = true;
-var ws;
+var preventQuickMessaging = true; // doesn't clear the message container after message send if true
 
-const url = location.protocol + '//' + location.host + location.pathname;
-const parameters = new URLSearchParams(window.location.search);
-var tempRoom;
+var ws; // websocket will be redefined on reconnect, so init up here
 
-function getCookie(cname) { // yes, this is stolen from w3schools. no, I am not remaking it
+var username = ""; // defining username variables up here prevents future conflict
+var lastUser = "";
+
+const url = location.protocol + '//' + location.host + location.pathname; // there's probably a better way of getting the url but it's fine
+const parameters = new URLSearchParams(window.location.search); // url params needed to determine room
+
+var tempRoom; // if you don't init the room here it just won't work. nobody knows why
+
+function getCookie(cname) { // gets a cookie by its name
   let name = cname + "=";
   let decodedCookie = decodeURIComponent(document.cookie);
   let ca = decodedCookie.split(';');
@@ -61,10 +65,43 @@ function getCookie(cname) { // yes, this is stolen from w3schools. no, I am not 
     }
   }
   return "";
+} // yes, this is stolen from w3schools. no, I am not remaking it
+
+if (getCookie("token") == "") { // asks for user data if token does not exist or is expired
+ let username = prompt("what is your username?");
+ let password = prompt("what is your password?");
+ let dc = prompt("what is your discord?"); // discord isn't a great solution for whois but it works i guess
+ let key = prompt("key?");
+ 
+ fetch(`${serverIP}login`, { // fetches in the js isn't great but it works soooo
+  method: "POST",
+  body: JSON.stringify({
+    name: username,
+    pass: password,
+    dc: dc,
+    key: key
+  }),
+  headers: {
+    "Content-type": "application/json; charset=UTF-8"
+  }
+  
+}).then((response) => response.json()).then((json) => { // response should be a token if response is configured right
+  let expirationDate = new Date();
+  expirationDate.setMonth(expirationDate.getMonth() + 5); 
+  document.cookie = `token=${json.cookie}; expires=${expirationDate.toUTCString()};` + " path=/"; // cookies are just big strings. nobody knows why
+});
 }
 
-function b(t) { // hours
- alert(`you have been banned for ${t} hours.`); 
+if (getCookie("username") !== "") { // deprecated. don't trust uers to hold their username
+ username = getCookie("username"); 
+}
+
+if (getCookie("color") !== "") { // gets color from cookie. not important so it doesn't need to be saved serverside
+ document.getElementById('colorInput').value = getCookie("color"); 
+}
+
+function b(t) { // hours. deprecated
+  alert(`you have been banned for ${t} hours.`); 
  let exp = new Date(); 
  exp.setMinutes(exp.getMinutes() + Math.floor((t * 60)));
  document.cookie = "b=true;" + " expires=" + exp.toUTCString() + "; path=/";
@@ -72,20 +109,23 @@ function b(t) { // hours
 
 var d;
 
-if (getCookie("b") == "true") {
+if (getCookie("b") == "true") { // deprecated
  window.location.replace("https://www.google.com/search?q=how+not+to+be+a+loser");
 }
 
-if (parameters.has('room')) {
+if (parameters.has('room')) { // set temproom to the room. if room doesn't exist go to main
   tempRoom = parameters.get('room');
 } else {
  tempRoom = 'main'; 
 }
 
-const room = tempRoom;
+const room = tempRoom; // make it undeclarable
 
 
 function socketHandler() {
+  if (username == "") {
+   //location.reload(); 
+  }
   console.log("starting socket handler");
   if (ws) {
     ws.close(); 
@@ -104,7 +144,7 @@ function socketHandler() {
   }  
 
   document.addEventListener('visibilitychange', visHandler);
-  ws = new WebSocket(serverIP);
+  ws = new WebSocket(serverIP + `?token=${getCookie("token")}`);
  
   // make sure only one of these is on at a time
   
@@ -150,12 +190,11 @@ function socketHandler() {
     if (text.includes("sysinq::wusyaname") && !isInit) {
       console.log("replying to sysinq");
       let message = "sysinq::reply";
-      let username = document.getElementById('usernameInput').value;
       let color = "#000000";
       let room = "all";
      ws.send(JSON.stringify({ username, message, color, room })); 
     }
-    
+    /*
     if (name.includes("SYSTEM") && text.includes("sysinq::b") && !isInit) {
       //console.log("banning?");
       //console.log(text.split(' ')[1] + " : " + document.getElementById('usernameInput').value);
@@ -165,8 +204,8 @@ function socketHandler() {
       window.location.replace("https://www.google.com/search?q=how+not+to+be+a+loser");
      }
     }
-    
-    if ((text.includes("New client joined!") || text.includes("Client left!")  || text.includes("sysinq")) && hideServerMessages) {
+    */
+    if ((text.includes("New client joined!") || text.includes("Client left!")  || text.includes("sysinq") || text.includes("/switch")) && hideServerMessages) {
       return;
     } else if (!rejoining){
       iconChange();
@@ -208,7 +247,7 @@ function socketHandler() {
         messageAuthor.style.marginRight = '1vw';
         messageAuthor.innerText += `:`;
       } else if (text.toLowerCase().includes('/clear')) {
-      messageContainer.innerHTML = '<img https://media.tenor.com/onXSYrBPyJIAAAAM/waymalers.gif>';
+      //messageContainer.innerHTML = '';
       return;
     } else {
       messageContent.innerText += `: ` + text;
@@ -222,9 +261,8 @@ function socketHandler() {
     lastUser = name;
   }
 
-  // Function to add event listener
-  function addMessageListener() {
-    messageForm.removeEventListener('submit', messageSubmitHandler); // Remove previous listener
+  function addMessageListener() { // handle submit listener, remove old one to avoid conflict
+    messageForm.removeEventListener('submit', messageSubmitHandler); // remove old listener
     messageForm.addEventListener('submit', messageSubmitHandler);
   }
 
@@ -237,21 +275,7 @@ function socketHandler() {
     }
 
  let message = document.getElementById('messageInput').value;
-    if (username === "") {
-      username = document.getElementById('usernameInput').value;
-      document.getElementById('usernameInput').value = username.replace(/\s/g, "");
-      username = document.getElementById('usernameInput').value;
-    } else if (username !== document.getElementById("usernameInput").value) {
-      let oldUsername = username;
-      username = document.getElementById('usernameInput').value;
-      document.getElementById('usernameInput').value = username.replace(/\s/g, "");
-      username = document.getElementById('usernameInput').value;
-    }
     
-    if (username.toLowerCase().includes('@') || username.toLowerCase().includes(',')) { // commas in here too, mostly because I don't feel like making another thingie for it
-     username = "big pinger boy"; 
-     document.getElementById('usernameInput').value = username;
-    }
     
     if (message.toLowerCase().includes("/switch")) {
       if ((message.toLowerCase() === "/switch")) {
@@ -262,11 +286,14 @@ function socketHandler() {
     }
     
     let color = document.getElementById('colorInput').value;
+    let colorExpirationDate = new Date();
+    colorExpirationDate.setMonth(colorExpirationDate.getMonth() + 1);
+    document.cookie = `color=${color}; expires=${colorExpirationDate.toUTCString()};` + " path=/";
     
     if (message.toLowerCase().includes("/sjm")) {
       hideServerMessages = !hideServerMessages;
     } else if (message.toLowerCase().includes("/help")) {
-      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room);
+      displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room, false);
     } else if (message === "" || message.includes('@')) {
         return;
     } else if (ws.readyState === WebSocket.OPEN) {
@@ -308,6 +335,28 @@ function socketHandler() {
 }
 
 socketHandler();
-    </script>
+  </script>
+
+  <div id="imgholder">
+    <img class="smallpictures" src="content/drpepper.gif">
+    <img class="smallpictures" src="content/piracy.gif">
+    <img class="smallpictures" src="content/right2repair.png">
+    <img class="smallpictures" src="content/pngbar.png">
+    <img class="smallpictures" src="content/neocitiesbutton1.gif">
+    <img class="smallpictures" src="content/YaVMOAV.gif">
+    <img class="smallpictures" src="content/tf.gif">
+    <img class="smallpictures" src="content/gospel_button.gif">
+    <img class="smallpictures" src="content/lin1.png">
+    <img class="smallpictures" src="content/kromer.gif">
+    <img class="smallpictures" src="content/firefoxget.gif">
+    <img class="smallpictures" src="content/homicidenow.gif">
+    <img class="smallpictures" src="content/github.gif">
+    <img class="smallpictures" src="content/internetprivacy.gif">
+    <img class="smallpictures" src="content/paintnet.gif">
+    <img class="smallpictures" src="content/publicdomain.gif">
+    <img class="smallpictures" src="content/webpassion.gif">
+    <!-- images from https://88by31.neocities.org/ and https://cyber.dabamos.de/ -->
+  </div>
+  
 </body>
 </html>

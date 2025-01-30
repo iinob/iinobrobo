@@ -1,5 +1,3 @@
-// TODO: automate discord authentication
-
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
@@ -31,8 +29,9 @@ const banPass = process.env.BANPASS;
 
 var messages = [];
 var users = 0;
+var onlineUsers = {};
 
-const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes definitely", "You may rely on it", "As I see it, yes", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "Outlook not so good", "Very doubtful", "KILL YOURSELF", "It is real in the subura", "Too deep in the files for you to know", "OH YEAH", "/gif https://media1.tenor.com/m/0Vn9kBbtblQAAAAd/simpsons-food.gif", "Sure why not", "Ms. Howe probably thinks so", "Use dataminer and try again", "Date a minor and try again", "Ok greasy gock gobbler", "Nop", "Go home", "It is as the gobumpulous has decided", "King biggy balls with me and I can't even lie", "Hit a seven, sure you're right", "It will get sticky"];
+const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes definitely", "You may rely on it", "As I see it, yes", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "Outlook not so good", "Very doubtful", "KILL YOURSELF", "It is real in the subura", "Too deep in the files for you to know", "OH YEAH", "/gif https://media1.tenor.com/m/0Vn9kBbtblQAAAAd/simpsons-food.gif", "Sure why not", "Ms. Howe probably thinks so", "Use dataminer and try again", "Date a minor and try again", "Ok greasy gock gobbler", "Nop", "Go home", "It is as the gobumpulous has decided", "King biggy balls with me and I can't even lie", "Hit a seven, sure you're right", "It will get sticky", "god damn NO", "god damn YES", "god damn MAYBE"];
 const feelings = ['https://media1.tenor.com/m/kkyVF17qvn8AAAAd/mario-super-mario.gif', 'https://tenor.com/view/that-monday-feeling-mario-luigi-gif-4870452924641132638', 'https://tenor.com/view/that-tuesday-feeling-mario-swag-dance-gif-159860540190894364', 'https://tenor.com/view/that-wednesday-feeling-mario-luigi-gif-17147220739757084890', 'https://tenor.com/view/that-thursday-feeling-mario-twerking-gif-1942858848498373928', 'https://tenor.com/view/that-friday-feeling-mario-luigi-gif-12023906803573680184', 'https://tenor.com/view/that-saturday-feeling-ellipsis-queen-of-strongest-hero-mario-gif-9250951604859110521'];
 const letters = { 'A': '🇦', 'B': '🇧', 'C': '🇨', 'D': '🇩', 'E': '🇪', 'F': '🇫', 'G': '🇬', 'H': '🇭', 'I': '🇮', 'J': '🇯', 'K': '🇰', 'L': '🇱', 'M': '🇲', 'N': '🇳', 'O': '🇴', 'P': '🇵', 'Q': '🇶', 'R': '🇷', 'S': '🇸', 'T': '🇹', 'U': '🇺', 'V': '🇻', 'W': '🇼', 'X': '🇽', 'Y': '🇾', 'Z': '🇿' };
 
@@ -87,7 +86,7 @@ const client = new Client({ // discord intents, discord requires perms to be set
         status: 'online',
         afk: false,
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
-            name: "fuck that, golf wang",
+            name: "du bist mein stern am firmament",
             type: ActivityType.Custom
         /* url: 'url'*/ // for streaming
         }],
@@ -336,7 +335,12 @@ wss.on('connection', (socket, req) => { // handles connected users
     if (currentUser !== undefined) {
 	    if (currentUser.banned == "true") {
 		    socket.close(1008, "banned indefinitely");
-	    }
+	    } else {
+		if (!onlineUsers[currentUser.name]) {
+            		onlineUsers[currentUser.name] = [];
+        	}
+		onlineUsers[currentUser.name].push(currentUser.name);
+	}
     } else {
         socket.close(1008, "not authenticated");
     }
@@ -405,7 +409,11 @@ wss.on('connection', (socket, req) => { // handles connected users
             }
 
             if (parsedMessage.message.includes('/here')) {
-                systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online`, "#fc7b03", parsedMessage.room);
+		let userString;
+		for (let i = 0; i < onlineUsers.length; i++) {
+		console.log(JSON.stringify(onlineUsers))
+		}
+                systemMessage("SYSTEM", `there are currently ${wss.clients.size} users online: ${Object.keys(onlineUsers)}`, "#fc7b03", parsedMessage.room);
                 passMessage(JSON.stringify(messages[messages.length - 1]));
             }
 
@@ -440,6 +448,20 @@ wss.on('connection', (socket, req) => { // handles connected users
 
     socket.on('close', () => { // runs when client leaves
     //users--;
+	try {
+	let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+	let currentUser = userData.find(u => u.cookie === token);
+	if (!currentUser) {
+		console.log(`could not find user: ${token}`);
+	} else {
+	onlineUsers[currentUser.name].pop();
+	if (onlineUsers[currentUser.name].length == 0) {
+        	delete onlineUsers[currentUser.name];
+        }
+	}
+	} catch (error) {
+		console.log(`error on connection close: ${error}`);
+	}
     });
 });
 
