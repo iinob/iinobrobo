@@ -9,6 +9,14 @@ const cron = require('node-cron');
 const wss = new WebSocket.Server({ server });
 const {Client, IntentsBitField} = require('discord.js');
 const { ActivityType } = require('discord.js');
+const crypto = require('crypto'); // let hash = crypto.createHash('md5').update('some_string').digest("hex");
+const fs = require('fs');
+const url = require('url');
+///const { json } = require('stream/consumers');
+const cors = require('cors');
+app.use(cors());
+app.use(express.json());
+const { v4: uuidv4 } = require('uuid');
 
 const discordKey = process.env.DISCORD_KEY; // ok fine I made a .env
 const channelID = process.env.CROSS_CHANNEL_CID;
@@ -18,26 +26,58 @@ const otherDailyChannel = process.env.SECONDARY_DAILY_CID;
 const serverID = process.env.TARGET_SERVER_ID;
 const banPass = process.env.BANPASS;
 
+
 var messages = [];
 var users = 0;
+var onlineUsers = {};
 
-const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes definitely", "You may rely on it", "As I see it, yes", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "Outlook not so good", "Very doubtful", "KILL YOURSELF", "It is real in the subura", "Too deep in the files for you to know", "OH YEAH", "/gif https://media1.tenor.com/m/0Vn9kBbtblQAAAAd/simpsons-food.gif", "Sure why not", "Ms. Howe probably thinks so", "Use dataminer and try again", "Date a minor and try again", "Ok greasy gock gobbler", "Nop", "Go home", "It is as the gobumpulous has decided", "King biggy balls with me and I can't even lie", "Hit a seven, sure you're right", "It will get sticky"];
+const outcomes = ["It is certain", "It is decidedly so", "Without a doubt", "Yes definitely", "You may rely on it", "As I see it, yes", "Most likely", "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again", "Ask again later", "Better not tell you now", "Cannot predict now", "Concentrate and ask again", "Don't count on it", "My reply is no", "Outlook not so good", "Very doubtful", "KILL YOURSELF", "It is real in the subura", "Too deep in the files for you to know", "OH YEAH", "/gif https://media1.tenor.com/m/0Vn9kBbtblQAAAAd/simpsons-food.gif", "Sure why not", "Ms. Howe probably thinks so", "Use dataminer and try again", "Date a minor and try again", "Ok greasy gock gobbler", "Nop", "Go home", "It is as the gobumpulous has decided", "King biggy balls with me and I can't even lie", "Hit a seven, sure you're right", "It will get sticky", "god damn NO", "god damn YES", "god damn MAYBE"];
 const feelings = ['https://media1.tenor.com/m/kkyVF17qvn8AAAAd/mario-super-mario.gif', 'https://tenor.com/view/that-monday-feeling-mario-luigi-gif-4870452924641132638', 'https://tenor.com/view/that-tuesday-feeling-mario-swag-dance-gif-159860540190894364', 'https://tenor.com/view/that-wednesday-feeling-mario-luigi-gif-17147220739757084890', 'https://tenor.com/view/that-thursday-feeling-mario-twerking-gif-1942858848498373928', 'https://tenor.com/view/that-friday-feeling-mario-luigi-gif-12023906803573680184', 'https://tenor.com/view/that-saturday-feeling-ellipsis-queen-of-strongest-hero-mario-gif-9250951604859110521'];
 const letters = { 'A': '🇦', 'B': '🇧', 'C': '🇨', 'D': '🇩', 'E': '🇪', 'F': '🇫', 'G': '🇬', 'H': '🇭', 'I': '🇮', 'J': '🇯', 'K': '🇰', 'L': '🇱', 'M': '🇲', 'N': '🇳', 'O': '🇴', 'P': '🇵', 'Q': '🇶', 'R': '🇷', 'S': '🇸', 'T': '🇹', 'U': '🇺', 'V': '🇻', 'W': '🇼', 'X': '🇽', 'Y': '🇾', 'Z': '🇿' };
 
+var keys = [];
 
 console.log('init started...'); // don't need nginx warning anymore, it starts at boot now
+
+function jsonRead() {
+    if (!fs.existsSync('userdata.json')) {
+        fs.writeFileSync("userdata.json");
+    }
+    return JSON.parse(fs.readFileSync("userdata.json"));
+}
+
+function randomString() {
+    return Math.random().toString(36).slice(2);
+}
+
+function jsonWrite(user) {
+        let users = jsonRead();
+        users.push(user);
+        fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+}
+
+function jsonTokenUpdate(userid, newtoken) {
+    let users = jsonRead();
+    let user = users.find(user => user.id === userid);
+    if (user) {
+        user.cookie = newtoken;
+        fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+    } else {
+        console.error(`failed to update token for user ${userid}`);
+    }
+}
+
 
 function systemMessage(username, message, color, room) { // probably doesn't need to be a function but it is
         messages.push({ username, message, color, room });
 }
 
-function passMessage(message) { // send the message out to active clients
-	wss.clients.forEach((client2) => {
+function passMessage(message) {
+    wss.clients.forEach((client2) => {
         if (client2.readyState === WebSocket.OPEN) {
-        	client2.send(message);
+            client2.send(message);
         }
-        });
+    });
 }
 
 
@@ -46,11 +86,11 @@ const client = new Client({ // discord intents, discord requires perms to be set
         status: 'online',
         afk: false,
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
-            name: "At 2025 - Where the hoes at? Cocky want [object Object]!",
+            name: "du bist mein stern am firmament",
             type: ActivityType.Custom
-	    /* url: 'url'*/ // for streaming
+        /* url: 'url'*/ // for streaming
         }],
-	},
+    },
     intents: [
         IntentsBitField.Flags.Guilds,
         IntentsBitField.Flags.GuildMembers,
@@ -69,9 +109,9 @@ client.on('ready', (c) => {
 })
 
 cron.schedule('0 6 * * *', () => { // send the daily feeling every day at 6
-	let today = new Date();
-	client.channels.cache.get(dailyChannel).send(feelings[today.getDay()]);
-	client.channels.cache.get(otherDailyChannel).send(feelings[today.getDay()]);
+    let today = new Date();
+    client.channels.cache.get(dailyChannel).send(feelings[today.getDay()]);
+    client.channels.cache.get(otherDailyChannel).send(feelings[today.getDay()]);
 });
 
 var rouletteChannel;
@@ -195,11 +235,11 @@ client.on('messageCreate', (msg) => {
     }
 
     if (msg.content.toLowerCase().includes('uwu') || msg.content.toLowerCase().includes('owo')) {
-    	msg.react('🤓');
+        msg.react('🤓');
     }
 
     if (msg.content.toLowerCase().includes('foolish') && isGoonery) {
-	 msg.reply({ files: ["./content/foolish.mp4"] });
+     msg.reply({ files: ["./content/foolish.mp4"] });
     }
 
     if (msg.content.toLowerCase().includes('gyu')) {
@@ -207,13 +247,13 @@ client.on('messageCreate', (msg) => {
     }
 
     if (msg.content.toLowerCase().includes('pickle') && isGoonery) {
-	    msg.reply({ files: ["./content/pickle.mp4"] });
+        msg.reply({ files: ["./content/pickle.mp4"] });
     }
 
     if (msg.channelId == channelID) { // send the discord messages in the #yohoho channel to the website
-	//console.log("discord message sent from: " + msg.author.username + " << " + msg.content);
+    //console.log("discord message sent from: " + msg.author.username + " << " + msg.content);
     systemMessage("(discord) " + msg.author.username, msg.content, "#5865f2", "main");
-	passMessage(JSON.stringify(messages[messages.length - 1]));
+    passMessage(JSON.stringify(messages[messages.length - 1]));
     if (msg.content.toLowerCase().includes('/senduuid')) {
         systemMessage("SYSTEM", `${msg.author.username}'s id: ${msg.author.id}`, "#fc7b03", "main");
         passMessage(JSON.stringify(messages[messages.length - 1]));
@@ -222,33 +262,33 @@ client.on('messageCreate', (msg) => {
 })
 
 client.on('interactionCreate', (interaction) => { // it's this many days until this national holiday
-	if (interaction.isChatInputCommand()) {
-		switch (interaction.commandName) {
-			case 'pimps':
-				interaction.reply("they need to go back to zimbabwe");
-				break;
-			case '8ball':
-				interaction.reply(outcomes[randomInt(0, outcomes.length - 1)]);
-				break;
-			case 'thatfeeling':
-				let today = new Date(); // idk why the date function's like this either, redeclare locally so it can change daily
-	            		interaction.reply(feelings[today.getDay()]);
-				break;
-			case 'roulettestart':
-		                if (!rouletteEnabled) {
-                		rouletteGame(interaction.channel.id);
-                		//interaction.reply({ content: "roulette started successfully", ephemeral: true });
-                		interaction.reply("roulette starting in current channel");
-                		}
-                		break;
-            		case 'rouletteend':
-                		rouletteEnd();
-                		break;
-			case 'pickup':
-				interaction.reply("you wanna rungle in my cungle I'll take you out");
-				break;
-			case 'reactword':
-				interaction.reply({ content: "reacting", ephemeral: true });
+    if (interaction.isChatInputCommand()) {
+        switch (interaction.commandName) {
+            case 'pimps':
+                interaction.reply("they need to go back to zimbabwe");
+                break;
+            case '8ball':
+                interaction.reply(outcomes[randomInt(0, outcomes.length - 1)]);
+                break;
+            case 'thatfeeling':
+                let today = new Date(); // idk why the date function's like this either, redeclare locally so it can change daily
+                        interaction.reply(feelings[today.getDay()]);
+                break;
+            case 'roulettestart':
+                        if (!rouletteEnabled) {
+                        rouletteGame(interaction.channel.id);
+                        //interaction.reply({ content: "roulette started successfully", ephemeral: true });
+                        interaction.reply("roulette starting in current channel");
+                        }
+                        break;
+                    case 'rouletteend':
+                        rouletteEnd();
+                        break;
+            case 'pickup':
+                interaction.reply("you wanna rungle in my cungle I'll take you out");
+                break;
+            case 'reactword':
+                interaction.reply({ content: "reacting", ephemeral: true });
                 let reactwordID = interaction.options.get('messageid').value;
                 interaction.channel.messages.fetch(reactwordID)
                 .then(targetMessage => {
@@ -266,85 +306,88 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                 .catch(error => {
                     console.error('Error fetching message:', error); 
                 });
-				break;
+                break;
             case 'messagesend':
                 let targetChannel = interaction.client.channels.cache.get(interaction.options.get('channelid').value);
                 let targetMessage = interaction.options.get('messagecontent').value;
                 targetChannel.send(targetMessage);
                 interaction.reply({ content: "message successful", ephemeral: true });
-			} // the end of the switch statement, not the end of the case
-	}
+                break;
+            case 'keygen':
+                let key = randomString();
+                if (keys.push(key) >= 5) {
+                    keys.shift();
+                }
+                interaction.reply({ content: `your key: ${key}`, ephemeral: true });
+            } // the end of the switch statement, not the end of the case
+    }
 });
 
 client.login(discordKey);
 
-var pinging = false;
-var pingUsers = [];
 
-wss.on('connection', (ws, req) => {
-	users++;
-
-	systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
-	passMessage(JSON.stringify(messages[messages.length - 1]));
-	// this is a necessary part of the website's functionality, even if the site hides join messages
-
-    if (ws.readyState === WebSocket.OPEN) { // send all messages if it's open, otherwise wait
-        ws.send(JSON.stringify(messages));
+wss.on('connection', (socket, req) => { // handles connected users
+    //users++; old system, not needed
+    let userData = jsonRead();
+    let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+    let currentUser = userData.find(u => u.cookie === token);
+    if (currentUser !== undefined) {
+	    if (currentUser.banned == "true") {
+		    socket.close(1008, "banned indefinitely");
+	    } else {
+		if (!onlineUsers[currentUser.name]) {
+            		onlineUsers[currentUser.name] = [];
+        	}
+		onlineUsers[currentUser.name].push(currentUser.name);
+	}
     } else {
-        ws.on('open', () => { // I have no idea if this is even possible to reach
-            ws.send(JSON.stringify(messages));
+        socket.close(1008, "not authenticated");
+    }
+    systemMessage("SYSTEM", "New client joined!"/* from " + req.headers['x-forwarded-for'] + "!"*/, "#fc7b03", "all");
+    passMessage(JSON.stringify(messages[messages.length - 1]));
+    // this is a necessary part of the website's functionality, even if the site hides join messages
+
+    if (socket.readyState === WebSocket.OPEN) { // send all messages if it's open, otherwise wait
+        socket.send(JSON.stringify(messages));
+    } else {
+        socket.on('open', () => { // I have no idea if this is even possible to reach
+            socket.send(JSON.stringify(messages));
         });
     }
     
+    socket.on('error', (error) => {
+        console.log(error);
+    });
 
-    ws.on('message', (message) => {
-        //console.log(`Received: ${message}`);
-        try {
-            const parsedMessage = JSON.parse(message);
-	        if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
-		        client.channels.cache.get(channelID).send(parsedMessage.username + ': ' + parsedMessage.message); // send messages from the website to discord
-	        }
-		//console.log(parsedMessage.username + " : " + parsedMessage.message);
-        if (parsedMessage.message.includes("/ban")) { // /ban pass user time (hours)
-            //let inctext = parsedMessage.message;
-            let handledMessage = parsedMessage.message.split(' ');
-            if (handledMessage[1] == banPass) {
-                console.log(`banning ${handledMessage[2]} for ${handledMessage[3]} hours`);
-                systemMessage("SYSTEM", `sysinq::b ${handledMessage[2]} ${handledMessage[3]}`, "#fc7b03", "all");
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-                systemMessage("SYSTEM", `banning ${handledMessage[2]} for ${handledMessage[3]} hours`, "#fc7b03", "all");
-                passMessage(JSON.stringify(messages[messages.length - 1]));
-            }
-            return;
+    socket.on('message', (message) => {
+        let userData = jsonRead();
+        let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+        let currentUser = userData.find(u => u.cookie === token);
+        if (currentUser !== undefined) {
+        } else {
+            socket.close();
         }
-
-
-		if (parsedMessage.message.includes('sysinq::reply')) {
-
-			pingUsers.push(parsedMessage.username);
-            
-			if (pingUsers.length == users) {
-				systemMessage("SYSTEM", `${users} active users (${wss.clients.size}): ${pingUsers.toString()}`, "#fc7b03", "all");
-				passMessage(JSON.stringify(messages[messages.length - 1]));
-				pinging = false;
-				pingUsers = [];
-			}
+        try {
+		let banned = false;
+            const parsedMessage = JSON.parse(message);
+		if (currentUser.banned == "true") {
+			banned = true;
 			return;
 		}
+            if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.message.includes(banPass)) { // messages too long will break discord
+                client.channels.cache.get(channelID).send(currentUser.name + ': ' + parsedMessage.message); // send messages from the website to discord
+            }
 
-	        if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
-		        return;
-	        }
-	        if (parsedMessage.message.includes('/clear')) { // supposed to save memory, mostly used to hide suspicious messages
-		        messages = [];
-	        }
+            if (parsedMessage.message.includes('@')) { // don't @everyone on discord lol
+                return;
+            }
 
-		if (parsedMessage.message.includes('/here')) {
-			systemMessage("SYSTEM", "sysinq::wusyaname", "#fc7b03", "all"); // system inquiry, doesn't really mean anything but looks cool ig
-			passMessage(JSON.stringify(messages[messages.length - 1]));
-			pinging = true;
-		}
+            
+            if (parsedMessage.message.includes('/clear') && !banned) { // supposed to save memory, mostly used to hide suspicious messages
+                messages = [];
+            }
 
+            parsedMessage.username = currentUser.name;
             messages.push(parsedMessage); // message list is important for new users to get the messages
 
             const jsonMessage = JSON.stringify(parsedMessage);
@@ -354,41 +397,187 @@ wss.on('connection', (ws, req) => {
                 }
             });
 
-	        if (parsedMessage.message.includes('/8ball')) { // google (I think aven added this)
-		        systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
-		        passMessage(JSON.stringify(messages[messages.length - 1]));
-	        }
-        } catch (error) {
-            console.error("Invalid message: " + message); // normally when this happens the error is something else entirely
-            console.error("Error: " + error); // so there's this
+            if (parsedMessage.message.includes('/ban') && currentUser.admin == "true") {
+                let users = jsonRead();
+                let target = users.find(target => target.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
+                if (target.admin != "true") {
+			    systemMessage("SYSTEM", `banned ${target.name}`, "#fc7b03", parsedMessage.room);
+                            passMessage(JSON.stringify(messages[messages.length - 1]));
+                    target.banned = "true";
+                    fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+                }
+            }
+            if (parsedMessage.message.includes('/unban') && currentUser.admin == "true") {
+                let users = jsonRead();
+                let target = users.find(target => target.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
+                if (target.admin != "true") {
+			systemMessage("SYSTEM", `unbanned ${target.name}`, "#fc7b03", parsedMessage.room);
+                        passMessage(JSON.stringify(messages[messages.length - 1]));
+                    target.banned = "false";
+                    fs.writeFileSync("userdata.json", JSON.stringify(users, null, 2));
+                }
+            }
+
+            if (parsedMessage.message.includes('/here') && !banned) {
+		let userString;
+		/*for (let i = 0; i < onlineUsers.length; i++) { // why ?????
+		console.log(JSON.stringify(onlineUsers))
+		}*/
+		if (Object.keys(onlineUsers).length <= 1) {
+			systemMessage("SYSTEM", "you are all alone :(", "#fc7b03", parsedMessage.room);
+			passMessage(JSON.stringify(messages[messages.length - 1]));
+		} else {
+                	systemMessage("SYSTEM", `there are currently ${Object.keys(onlineUsers).length} users online: ${Object.keys(onlineUsers)}`, "#fc7b03", parsedMessage.room);
+        	        passMessage(JSON.stringify(messages[messages.length - 1]));
+            	}
 	}
+
+            if (parsedMessage.message.includes('/whois') && !banned) {
+                let users = jsonRead();
+                let user = users.find(user => user.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
+                if (user) {
+                    systemMessage("SYSTEM", `${user.name} is ${user.dc}`, "#fc7b03", parsedMessage.room);
+                    passMessage(JSON.stringify(messages[messages.length - 1]));
+                } else {
+                    systemMessage("SYSTEM", "could not find user", "#fc7b03", parsedMessage.room);
+                    passMessage(JSON.stringify(messages[messages.length - 1]))
+                }
+            }
+		    if (parsedMessage.message.includes('/keygen') && !banned) {
+			    let key = randomString();
+                if (keys.push(key) >= 5) {
+                    keys.shift();
+                }
+			    systemMessage("SYSTEM", `your key is ${key}`, "#fc7b03", "all");
+			    passMessage(JSON.stringify(messages[messages.length - 1]));
+		    }
+
+            if (parsedMessage.message.includes('/8ball') && !banned) { // google (I think aven added this)
+                systemMessage("SYSTEM", outcomes[randomInt(0, outcomes.length - 1)], "#fc7b03", parsedMessage.room);
+                passMessage(JSON.stringify(messages[messages.length - 1]));
+            }
+        } catch (error) { // don't shut down when a brocken message is sent
+            console.error("Error: " + error); // so there's this
+    }
     });
 
-    ws.on('close', () => {
-        //systemMessage("SYSTEM", "Client left!", "#fc7b03"); // for some reason there are a lot of join messages
-//	console.log('Client disconnected');
-	users--;
+    socket.on('close', () => { // runs when client leaves
+    //users--;
+	try {
+	let token = new URLSearchParams(req.url.split('?')[1]).get('token');
+	let currentUser = userData.find(u => u.cookie === token);
+	if (!currentUser) {
+		console.log(`could not find user: ${token}`);
+	} else {
+	onlineUsers[currentUser.name].pop();
+	if (onlineUsers[currentUser.name].length == 0) {
+        	delete onlineUsers[currentUser.name];
+        }
+	}
+	} catch (error) {
+		console.log(`error on connection close: ${error}`);
+	}
     });
 });
 
+// pretty much everything before here is boilerplate, necessary but not too important
+
 app.use(express.static('public'));
+
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html')); // file to tell users to go away
 });
 
+app.post('/login', (req, res) =>  {
+    const tempToken = randomString();
+    const users = jsonRead();
+    let { name, pass, key, dc } = req.body;
+    if (!keys.includes(key)) {
+        return;
+    } else {
+        if (keys.indexOf(key) > -1) {
+            keys.splice(keys.indexOf(key), 1);
+          }
+    }
+    if (name == "" || pass == "") {
+        return;
+    }
+    if (name.includes("@")) {
+        return;
+    }
+    let user = users.find(user => user.name.toLowerCase() === name.toLowerCase());
+    if (user) {
+        if (user.pass == crypto.createHash('md5').update(pass).digest("hex")) {
+            console.log(`login successful for ${user.name} : ${user.id}`);
+            let userObj = {
+                "name": user.name,
+                "id": user.id,
+                "cookie": tempToken
+            }
+            jsonTokenUpdate(user.id, tempToken);
+            res.send(JSON.stringify(userObj));
+        } else {
+            console.log(`login failed for: ${name}`);
+        }
+    } else {
+                console.log(`making new account for ${name}`);
+                let tempID = uuidv4();
+                let userIDHolder = users.find(user => user.id === tempID);
+                while(userIDHolder) {
+                    tempID = uuidv4();
+                    userIDHolder = users.find(user => user.id === tempID);
+                }
+
+                let userObj = {
+                    "name": name,
+                    "id": tempID,
+                    "pass": crypto.createHash('md5').update(pass).digest("hex"),
+                    "cookie": tempToken,
+                    "dc": dc,
+                    "admin": "false",
+                    "banned": "false"
+                }
+                jsonWrite(userObj);
+                res.send(JSON.stringify({"name": name, "id": tempID, "cookie": tempToken}));
+                return;
+            
+        }
+    
+});
+
 app.get('/isaac', (req, res) => {
-	res.sendFile(path.join(__dirname, 'public', 'isaac.html'));
+    res.sendFile(path.join(__dirname, 'public', 'isaac.html'));
 });
 
 app.get('/wotl.swf', (req, res) => {
-	res.sendFile(path.join(__dirname, 'content', 'wotl.swf'));
+    res.sendFile(path.join(__dirname, 'content', 'wotl.swf'));
 });
 
-app.get('/file', (req, res) => {
-	res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
-	//console.log("file accessed from " + req.headers['x-forwarded-for']); //very secretive
+app.get('/waterTheme.mp3', (req, res) => {
+	res.sendfile(path.join(__dirname, 'content', 'waterTheme.mp3'));
 });
+
+app.get('/hubTheme.mp3', (req, res) => {
+	res.sendFile(path.join(__dirname, 'content', 'hubTheme.mp3'));
+});
+
+app.get('/newsTheme.mp3', (req, res) => {
+	res.sendFile(path.join(__dirname, 'content', 'newsTheme.mp3'));
+});
+
+/*
+app.get('/file', (req, res) => {
+    res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
+});
+*/
+/*
+server.on('upgrade', (req, socket, head) => {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+*/
 
 app.use((req, res) => {
     res.status(404).sendFile(path.join(__dirname, 'public', 'notfound.html')); // another file to tell users to go away
