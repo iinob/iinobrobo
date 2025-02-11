@@ -61,6 +61,7 @@ function ctWrite(userID) {
 */
 function ctUpdate(cort, count, userID) { // cort is bool for c or t, c is true and t is false
     let users = ctRead();
+    let user = users.find(user => user.id === userID);
     if (user) {
         if (cort) {
         user.c += count;
@@ -368,7 +369,11 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
             case 'catstits':
                 let targets = ctRead();
                 let target = targets.find(user => user.id === interaction.options.get('target').user.id);
+                if (target) {
                 interaction.reply(`${interaction.options.get('target').user.username} has said cat ${target.c} times and tit ${target.t} times`);
+                } else {
+                    interaction.reply("user has not said cat or tit (or I'm being stupid, either way)");
+                }
                 //console.log(interaction.options.get('target').user.id);
                 break;
             } // the end of the switch statement, not the end of the case
