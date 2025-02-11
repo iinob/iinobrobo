@@ -60,6 +60,18 @@ const commands = [
 				required: true
 			}
 		]
+	},
+	{
+		name: 'catstits',
+		description: 'how many times have you said each',
+		options: [
+			{
+				name: "target",
+				description: 'user to get data for',
+				type: ApplicationCommandOptionType.User,
+				required: true
+			}
+		]
 	}
 ];
 
@@ -86,10 +98,12 @@ const adminCommands = [
 
 (async () => {
 try {
-	console.log("registering slash commands");
+	console.log("registering global commands (1/3)");
 	await rest.put(Routes.applicationCommands(botID), { body: commands });
-	//await rest.put(Routes.applicationGuildCommands(botID, serverID), { body: commands }); // readd later probababably
-	//await rest.put(Routes.applicationGuildCommands(botID, cheeseID), { body: commands });
+	console.log("registering prod server commands (2/3)");
+	await rest.put(Routes.applicationGuildCommands(botID, serverID), { body: commands });
+	await rest.put(Routes.applicationGuildCommands(botID, cheeseID), { body: commands });
+	console.log("registering admin commands (3/3)");
 	await rest.put(Routes.applicationGuildCommands(botID, adminServerID), { body: adminCommands });
 	console.log("done registering slash commands");
 } catch (error) {

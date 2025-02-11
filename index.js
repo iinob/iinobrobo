@@ -41,9 +41,48 @@ console.log('init started...'); // don't need nginx warning anymore, it starts a
 
 function jsonRead() {
     if (!fs.existsSync('userdata.json')) {
-        fs.writeFileSync("userdata.json");
+        fs.writeFileSync('userdata.json');
     }
-    return JSON.parse(fs.readFileSync("userdata.json"));
+    return JSON.parse(fs.readFileSync('userdata.json'));
+}
+
+function ctRead() {
+    if (!fs.existsSync('ct.json')) {
+        fs.writeFileSync('ct.json');
+    }
+    return JSON.parse(fs.readFileSync('ct.json'));
+}
+/* // not needed right now. might not be needed ever
+function ctWrite(userID) {
+    let users = ctRead();
+    users.push(userID);
+    fs.writeFileSync("ct.json", JSON.stringify(users, null, 2));
+}
+*/
+function ctUpdate(cort, count, userID) { // cort is bool for c or t, c is true and t is false
+    let users = ctRead();
+    if (user) {
+        if (cort) {
+        user.c += count;
+        } else {
+            user.t += count;
+        }
+        fs.writeFileSync("ct.json", JSON.stringify(users, null, 2));
+    } else {
+        let tempUser = {
+            "id": userID,
+            "c": 0,
+            "t": 0
+        }
+        if (cort) {
+            tempUser.c += count;
+        } else {
+            tempUser.t += count;
+        }
+        users.push(tempUser);
+        fs.writeFileSync("ct.json", JSON.stringify(users, null, 2));
+        console.error(`adding new tc user: ${userID}`);
+    }
 }
 
 function randomString() {
@@ -86,8 +125,8 @@ const client = new Client({ // discord intents, discord requires perms to be set
         status: 'online',
         afk: false,
         activities: [{ // Playing, Watching, Listening, Competing, Streaming, Custom
-            name: "du bist mein stern am firmament",
-            type: ActivityType.Custom
+            name: "Cherry Bomb",
+            type: ActivityType.Listening
         /* url: 'url'*/ // for streaming
         }],
     },
@@ -228,7 +267,13 @@ client.on('messageCreate', (msg) => {
             }
         }
     }
+    if (msg.content.toLowerCase().includes('cat')) {
+        ctUpdate(true, (msg.content.toLowerCase().match(/cat/g) || []).length, msg.author.id);
+    }
 
+    if (msg.content.toLowerCase().includes('tit')) {
+        ctUpdate(false, (msg.content.toLowerCase().match(/tit/g) || []).length, msg.author.id);
+    }
 
     if (msg.content.toLowerCase().includes('balls') && isGoonery) {
         msg.reply('hehe balls');
@@ -243,7 +288,7 @@ client.on('messageCreate', (msg) => {
     }
 
     if (msg.content.toLowerCase().includes('gyu')) {
-         msg.reply({ files: ["./content/gyu.mp4"] });
+        msg.reply({ files: ["./content/gyu.mp4"] });
     }
 
     if (msg.content.toLowerCase().includes('pickle') && isGoonery) {
@@ -319,6 +364,13 @@ client.on('interactionCreate', (interaction) => { // it's this many days until t
                     keys.shift();
                 }
                 interaction.reply({ content: `your key: ${key}`, ephemeral: true });
+                break;
+            case 'catstits':
+                let targets = ctRead();
+                let target = targets.find(user => user.id === interaction.options.get('target').user.id);
+                interaction.reply(`${interaction.options.get('target').user.username} has said cat ${target.c} times and tit ${target.t} times`);
+                //console.log(interaction.options.get('target').user.id);
+                break;
             } // the end of the switch statement, not the end of the case
     }
 });
@@ -555,7 +607,7 @@ app.get('/wotl.swf', (req, res) => {
 });
 
 app.get('/waterTheme.mp3', (req, res) => {
-	res.sendfile(path.join(__dirname, 'content', 'waterTheme.mp3'));
+	res.sendFile(path.join(__dirname, 'content', 'waterTheme.mp3'));
 });
 
 app.get('/hubTheme.mp3', (req, res) => {
