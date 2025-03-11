@@ -1,4 +1,3 @@
-// TODO: refactor systemmessage and passmessage into a single function if possible, continue work on line 394
 const express = require('express');
 const WebSocket = require('ws');
 const http = require('http');
@@ -391,8 +390,8 @@ wss.on('connection', (socket, req) => { // handles connected users
 		if (!onlineUsers[currentUser.name]) {
             		onlineUsers[currentUser.name] = [];
         	}
-		onlineUsers[currentUser.name].push([currentUser.name, socket]); // THIS IS WHERE THE SHIT HAPPENS. array with name and socket in the push. grab socket from the things inside the thing and either send to the first one or find the unique ones and send to all (finding unique might not be necessary we'll see)
-	} // sent messages will need to have a new parameter that specifies the type (ex. main, dm, sysinq). this will also help problems with filtering system messages
+		onlineUsers[currentUser.name].push(currentUser.name);
+	}
     } else {
         socket.close(1008, "not authenticated");
     }
@@ -428,7 +427,7 @@ wss.on('connection', (socket, req) => { // handles connected users
 			banned = true;
 			return;
 		}
-            if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main" && !parsedMessage.target) { // messages too long will break discord
+            if (!(parsedMessage.message.length > 1500) && parsedMessage.room == "main") { // messages too long will break discord
                 client.channels.cache.get(channelID).send(currentUser.name + ': ' + parsedMessage.message); // send messages from the website to discord
             }
 
@@ -442,22 +441,15 @@ wss.on('connection', (socket, req) => { // handles connected users
             }
 
             parsedMessage.username = currentUser.name;
+            messages.push(parsedMessage); // message list is important for new users to get the messages
+
             const jsonMessage = JSON.stringify(parsedMessage);
-            let users = jsonRead();
-            let dmtarget = users.find(dmtarget => dmtarget.name === parsedMessage.target);
-            if (dmtarget && onlineUsers[dmtarget.name]) {
-		//console.log(`sending a dm to ${onlineUsers[dmtarget.name][0][0]} ${dmtarget.name} ${parsedMessage.message} ${onlineUsers[dmtarget.name][0][1]}`);
-                onlineUsers[dmtarget.name][0][1].send(jsonMessage); // this is disgusting. nested arrays suck
-                //onlineUsers[currentUser.name][0][1].send(jsonMessage); // send to sender and recipient
-            } else {
-                messages.push(parsedMessage); // message list is important for new users to get the messages
-                wss.clients.forEach((client2) => { // send new messages out to the clients
+            wss.clients.forEach((client2) => { // send new messages out to the clients
                 if (client2.readyState === WebSocket.OPEN) {
                     client2.send(jsonMessage);
                 }
-            
-                });
-            }
+            });
+
             if (parsedMessage.message.includes('/ban') && currentUser.admin == "true") {
                 let users = jsonRead();
                 let target = users.find(target => target.name === parsedMessage.message.slice(parsedMessage.message.indexOf(' ') + 1 || ""));
@@ -480,15 +472,18 @@ wss.on('connection', (socket, req) => { // handles connected users
             }
 
             if (parsedMessage.message.includes('/here') && !banned) {
-		        let userString;
-		        if (Object.keys(onlineUsers).length <= 1) {
-			        systemMessage("SYSTEM", "you are all alone :(", "#fc7b03", parsedMessage.room);
-			        passMessage(JSON.stringify(messages[messages.length - 1]));
-		        } else {
+		let userString;
+		/*for (let i = 0; i < onlineUsers.length; i++) { // why ?????
+		console.log(JSON.stringify(onlineUsers))
+		}*/
+		if (Object.keys(onlineUsers).length <= 1) {
+			systemMessage("SYSTEM", "you are all alone :(", "#fc7b03", parsedMessage.room);
+			passMessage(JSON.stringify(messages[messages.length - 1]));
+		} else {
                 	systemMessage("SYSTEM", `there are currently ${Object.keys(onlineUsers).length} users online: ${Object.keys(onlineUsers)}`, "#fc7b03", parsedMessage.room);
         	        passMessage(JSON.stringify(messages[messages.length - 1]));
             	}
-	        }
+	}
 
             if (parsedMessage.message.includes('/whois') && !banned) {
                 let users = jsonRead();
@@ -515,7 +510,7 @@ wss.on('connection', (socket, req) => { // handles connected users
                 passMessage(JSON.stringify(messages[messages.length - 1]));
             }
         } catch (error) { // don't shut down when a brocken message is sent
-            console.error("Error: " + error); // so there's this (coming back a while later, I have no idea what this means)
+            console.error("Error: " + error); // so there's this
     }
     });
 
@@ -539,22 +534,29 @@ wss.on('connection', (socket, req) => { // handles connected users
 });
 
 // pretty much everything before here is boilerplate, necessary but not too important
-/*
+
 app.use(express.static('public'));
 
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html')); // file to tell users to go away
 });
-*/
+
 app.post('/login', (req, res) =>  {
     const tempToken = randomString();
     const users = jsonRead();
     let { name, pass, key, dc } = req.body;
+    if (!keys.includes(key)) {
+        return;
+    } else {
+        if (keys.indexOf(key) > -1) {
+            keys.splice(keys.indexOf(key), 1);
+          }
+    }
     if (name == "" || pass == "") {
         return;
     }
-    if (name.includes("@") || name.includes("dm from") || name.includes("to ")) {
+    if (name.includes("@")) {
         return;
     }
     let user = users.find(user => user.name.toLowerCase() === name.toLowerCase());
@@ -572,11 +574,6 @@ app.post('/login', (req, res) =>  {
             console.log(`login failed for: ${name}`);
         }
     } else {
-                if (!keys.includes(key)) {
-            return;
-                } else if (keys.indexOf(key) > -1) {
-                keys.splice(keys.indexOf(key), 1);
-              }
                 console.log(`making new account for ${name}`);
                 let tempID = uuidv4();
                 let userIDHolder = users.find(user => user.id === tempID);
@@ -621,11 +618,8 @@ app.get('/hubTheme.mp3', (req, res) => {
 app.get('/newsTheme.mp3', (req, res) => {
 	res.sendFile(path.join(__dirname, 'content', 'newsTheme.mp3'));
 });
-/*
-app.get('/vtol.zip', (req, res) => {
-	res.sendFile(path.join(__dirname, 'content', 'vtol.zip'));
-});
 
+/*
 app.get('/file', (req, res) => {
     res.sendFile(path.join(__dirname, 'content', 'movie.zip'));
 });

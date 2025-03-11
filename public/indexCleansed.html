@@ -15,12 +15,14 @@
 </div>
   <form id="messageForm" autocomplete="off" spellcheck="false">
     <input class="textInput" type="text" id="messageInput" placeholder="message" spellcheck="false" maxlength="99999" required>
+    <input class="textInput" type="text" id="targetInput" placeholder="target" spellcheck="false" maxlength="30">
     <input type="color" id="colorInput" placeholder="username color" required value="#ffffff">
     <button id="sendButton" type="submit">⮕</button>
   </form>
-  <div id="messageContainer"></div>
-
-
+  <div id="containerContainer">
+  <div class="messageContainer" id="messageContainer"></div>
+  <div class="messageContainer" id="dmContainer"></div>
+  </div>
     <script>
     
     // 24f388f8b15880fbdf976044322706e87f1593c4395fa84809238d91663cfd0b
@@ -28,10 +30,11 @@
     
 console.log("starting js");
 
-const serverIP = 'https://127.0.0.1:1337/';
+const serverIP = 'https://127.0.0.1';
 
 const messageForm = document.getElementById('messageForm');
 const messageContainer = document.getElementById('messageContainer');
+const dmContainer = document.getElementById('dmContainer');
 const header = document.getElementById('header');
 const icon = document.getElementById('icon');
 const al = document.getElementById('siteAlert');
@@ -39,7 +42,7 @@ const al = document.getElementById('siteAlert');
 var rejoining = false; // set to true when disconnected and false when connected. 
 var hideServerMessages = true; // hides non-important messages from the server
 var bigchungus = "NEVER";
-var preventQuickMessaging = true; // doesn't clear the message container after message send if true
+ // doesn't clear the message container after message send if true
 
 var ws; // websocket will be redefined on reconnect, so init up here
 
@@ -67,29 +70,8 @@ function getCookie(cname) { // gets a cookie by its name
   return "";
 } // yes, this is stolen from w3schools. no, I am not remaking it
 
-if (getCookie("token") == "") { // asks for user data if token does not exist or is expired
- let username = prompt("what is your username?");
- let password = prompt("what is your password?");
- let dc = prompt("what is your discord?"); // discord isn't a great solution for whois but it works i guess
- let key = prompt("key?");
- 
- fetch(`${serverIP}login`, { // fetches in the js isn't great but it works soooo
-  method: "POST",
-  body: JSON.stringify({
-    name: username,
-    pass: password,
-    dc: dc,
-    key: key
-  }),
-  headers: {
-    "Content-type": "application/json; charset=UTF-8"
-  }
-  
-}).then((response) => response.json()).then((json) => { // response should be a token if response is configured right
-  let expirationDate = new Date();
-  expirationDate.setMonth(expirationDate.getMonth() + 5); 
-  document.cookie = `token=${json.cookie}; expires=${expirationDate.toUTCString()};` + " path=/"; // cookies are just big strings. nobody knows why
-});
+if (getCookie("token") == "") { // redirect to login page if token cookie is missing
+  window.location.href = 'loginlocal.html';
 }
 
 if (getCookie("username") !== "") { // deprecated. don't trust uers to hold their username
@@ -153,13 +135,18 @@ function socketHandler() {
       const data = JSON.parse(event.data);
       if (Array.isArray(data)) {
         data.forEach((object) => {
-          displayMessage(object.username, object.message, object.color, object.room, true);
+          displayMessage(object.username, object.message, object.color, object.room, true, object.target);
         });
         rejoining = false;
         //console.log("rejoining false");
       } else if (data.message) {
-        displayMessage(data.username, data.message, data.color, data.room, false);
-      } else {f
+        if (data.target) {
+        console.log("got a dm to: " + data.target + " " + data.message);
+        displayMessage("dm from " + data.username, data.message, data.color, data.room, false, data.target);
+        } else {
+        displayMessage(data.username, data.message, data.color, data.room, false, data.target);
+        }
+      } else { // f
         console.error("Unknown message format:", data);
       }
     } catch (error) {
@@ -172,7 +159,7 @@ function socketHandler() {
     return lastSlashIndex === -1 ? str : str.substring(lastSlashIndex + 1);
   }
 
-  function displayMessage(name, text, color, channel, isInit) {
+  function displayMessage(name, text, color, channel, isInit, target) {
     if (channel != "all" && room != channel) {
       //console.log("not showing message because " + room + ":" + channel + ":" + (channel != room) + ":" + (channel != "all"));
       return;
@@ -187,24 +174,6 @@ function socketHandler() {
       }
     }
     //console.log(name + ": " + text + ": " + color);
-    if (text.includes("sysinq::wusyaname") && !isInit) {
-      console.log("replying to sysinq");
-      let message = "sysinq::reply";
-      let color = "#000000";
-      let room = "all";
-     ws.send(JSON.stringify({ username, message, color, room })); 
-    }
-    /*
-    if (name.includes("SYSTEM") && text.includes("sysinq::b") && !isInit) {
-      //console.log("banning?");
-      //console.log(text.split(' ')[1] + " : " + document.getElementById('usernameInput').value);
-     if (text.split(' ')[1] == document.getElementById('usernameInput').value) {
-      //console.log("banning.");
-      b(parseFloat(text.split(' ')[2]));
-      window.location.replace("https://www.google.com/search?q=how+not+to+be+a+loser");
-     }
-    }
-    */
     if ((text.includes("New client joined!") || text.includes("Client left!")  || text.includes("sysinq") || text.includes("/switch")) && hideServerMessages) {
       return;
     } else if (!rejoining){
@@ -221,6 +190,7 @@ function socketHandler() {
     messageAuthor.style.color = color;
     messageAuthor.innerText = name;
     if (text.toLowerCase().includes('/img') || text.toLowerCase().includes('/gif')) {
+      console.log(text);
       if (/[a-zA-Z]/.test(text.replace("/img", "").replace("/gif", ""))) {
         messageContent.innerHTML = '<img width="315" src="' + text.split(' ')[1] + '">';
       } else {
@@ -231,7 +201,7 @@ function socketHandler() {
       }
     } else if ((text.toLowerCase().includes('/vid') || text.toLowerCase().includes('www.youtube.com/watch')) && color !== '#5865f3') {
       if (!(text.toLowerCase().includes('/vid'))) {
-        displayMessage(name, text, '#5865f3', room);
+        displayMessage(name, text, '#5865f3', room, false, target);
         text = text.replace(/^.*?(https[^ ]*)\s.*$/, '$1');
        text = '/vid' + text; 
       }
@@ -257,8 +227,14 @@ function socketHandler() {
       messageElement.style.marginBottom = '2vh';
     }
     //console.log(name + " : " + text + " : " + channel);
-    messageContainer.prepend(messageElement);
-    lastUser = name;
+    if (target) {
+      messageContainer.prepend(messageElement);
+      lastUser = name;
+      //dmContainer.prepend(messageElement);
+    } else {
+      messageContainer.prepend(messageElement);
+      lastUser = name;
+    }
   }
 
   function addMessageListener() { // handle submit listener, remove old one to avoid conflict
@@ -270,13 +246,12 @@ function socketHandler() {
     event.preventDefault();
     //console.log("button pressed");
     
-    if (d) {
+    if (d) { // deprecated. remove eventually please thanks
      return; 
     }
 
- let message = document.getElementById('messageInput').value;
-    
-    
+  let message = document.getElementById('messageInput').value;
+  let target = document.getElementById('targetInput').value;
     if (message.toLowerCase().includes("/switch")) {
       if ((message.toLowerCase() === "/switch")) {
         window.location.replace(url);
@@ -292,24 +267,29 @@ function socketHandler() {
     
     if (message.toLowerCase().includes("/sjm")) {
       hideServerMessages = !hideServerMessages;
-    } else if (message.toLowerCase().includes("/help")) {
+    } else if (message.toLowerCase().includes("/logout")) { // make this not apply when banned. don't want people making new accounts too easily
+            displayMessage("Da-Gah-Mah", "logout command not implemented yet", "#FFD700", room, false);
+      } else if(message.toLowerCase().includes("/help")) {
       displayMessage("Da-Gah-Mah", "(without spaces after slashes) / sjm to show join messages, / clear to clear message history, / count to show amount of online users, / img [image address] to display images, / vid [youtube video address/id] to display youtube videos, / a [link] for links, / 8ball to use the magic 8 ball, / switch [room name] to switch to a different room (blank sends you to the main room)", "#FFD700", room, false);
     } else if (message === "" || message.includes('@')) {
         return;
     } else if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ username, message, color, room }));
-      if (preventQuickMessaging) {
+        if (target) {
+          displayMessage("dm to " + target, message, color, room, false, target);
+        }
+      ws.send(JSON.stringify({ username, message, color, room, target }));
+      
         document.getElementById('messageInput').value = '';
-      }
+      
       return;
     } else {
       message = "[ws starting]";
     }
     
-    if (preventQuickMessaging) {
+    //if (preventQuickMessaging) {
       document.getElementById('messageInput').value = '';
-    }
-    displayMessage(username, message, color, room);
+    //}
+    displayMessage(username, message, color, room, false, target);
   }
 
   addMessageListener(); // Add the listener when the socket is established
@@ -328,6 +308,7 @@ function socketHandler() {
   
   ws.onerror = (event) => {
     console.warn("websocket error received, attempting restart");
+    console.log(event);
     rejoining = true;
     //console.log("rejoining true");
     setTimeout(socketHandler, 1000);
@@ -355,6 +336,7 @@ socketHandler();
     <img class="smallpictures" src="content/paintnet.gif">
     <img class="smallpictures" src="content/publicdomain.gif">
     <img class="smallpictures" src="content/webpassion.gif">
+    <a href="https://divorcedmen.neocities.org/"><img class="smallpictures" src="content/divorce.gif"></a>
     <!-- images from https://88by31.neocities.org/ and https://cyber.dabamos.de/ -->
   </div>
   
